@@ -37,55 +37,14 @@ chsh -s /usr/bin/fish "$USER"
 ## Building
 
 This repo builds automatically via `.github/workflows/build.yml` once pushed to
-GitHub (requires `SIGNING_SECRET` set in the repo's Actions secrets — see
-"Signing" below). It publishes to `ghcr.io/gamerx27/kinoite-x27`.
-
-## Signing
-
-A cosign/sigstore keypair has already been generated locally (`cosign.pub` is
-committed; `cosign.private` is git-ignored — **do not commit it**). Before
-pushing, add its contents as a GitHub Actions secret named `SIGNING_SECRET`:
-
-```
-gh secret set SIGNING_SECRET < cosign.private
-```
+GitHub. It publishes to `ghcr.io/gamerx27/kinoite-x27`.
 
 ## Rebasing onto this image
 
 The package must be **public** on ghcr.io first (Package settings → Change
 visibility → Public), otherwise the pull will be rejected as unauthorized.
 
-Rebase unsigned to pull the image:
-
 ```
 sudo rpm-ostree rebase ostree-unverified-registry:ghcr.io/gamerx27/kinoite-x27:latest
 systemctl reboot
-```
-
-### Optional: switch to signature-verified pulls
-
-Running `ostree-image-signed:docker://...` directly will fail with
-`containers-policy.json specifies a default of insecureAcceptAnything;
-refusing usage` — the system's default container policy doesn't know how to
-verify this image's signature yet. Tell it how, using the `cosign.pub` key
-committed in this repo, **before** running the signed rebase:
-
-```
-sudo mkdir -p /etc/pki/containers
-sudo curl -fsSL -o /etc/pki/containers/kinoite-x27.pub \
-  https://raw.githubusercontent.com/GamerX27/X27-Kionite/main/cosign.pub
-
-sudo python3 -c "
-import json
-path = '/etc/containers/policy.json'
-with open(path) as f:
-    policy = json.load(f)
-policy.setdefault('transports', {}).setdefault('docker', {})['ghcr.io/gamerx27/kinoite-x27'] = [
-    {'type': 'sigstoreSigned', 'keyPath': '/etc/pki/containers/kinoite-x27.pub'}
-]
-with open(path, 'w') as f:
-    json.dump(policy, f, indent=2)
-"
-
-sudo rpm-ostree rebase ostree-image-signed:docker://ghcr.io/gamerx27/kinoite-x27:latest
 ```
