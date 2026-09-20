@@ -1,0 +1,53 @@
+---
+# yaml-language-server: $schema=https://schema.blue-build.org/recipe-v1.json
+
+name: kinoite-x27
+description: Custom Fedora Kinoite with X27 config, KDE tweaks, and Brave Origin
+base-image: ghcr.io/blue-build/base-images/fedora-kinoite
+image-version: latest
+
+modules:
+  # Ship system-wide config files (dark theme, Konsole, shell default, NM, rpm-ostreed, default browser).
+  - type: files
+    files:
+      - source: system
+        destination: /
+
+  - type: rpm-ostree
+    repos:
+      - https://brave-browser-rpm-release.s3.brave.com/brave-browser.repo
+    keys:
+      - https://brave-browser-rpm-release.s3.brave.com/brave-core.asc
+    install:
+      - brave-origin
+      - fastfetch
+      - fish
+      - htop
+      - nano
+      - papirus-icon-theme
+      - pciutils
+      - lm_sensors
+    remove:
+      - firefox
+      - firefox-langpacks
+      - khelpcenter
+
+  - type: default-flatpaks
+    configurations:
+      - scope: system
+        notify: true
+        repo:
+          title: Flathub (system)
+        install:
+          - org.videolan.VLC
+          - org.jellyfin.JellyfinDesktop
+          - org.localsend.localsend_app
+          - io.github.kolunmi.Bazaar
+          - com.unicornsonlsd.finamp
+
+  - type: systemd
+    system:
+      enabled:
+        - rpm-ostreed-automatic.timer
+
+  - type: signing
