@@ -19,6 +19,9 @@ Source: [`recipes/recipe.yml`](recipes/recipe.yml). Published to
 
 ## First-time rebase
 
+Need a stock Fedora Kinoite install to rebase from first? Get the ISO here:
+[fedoraproject.org/atomic-desktops/kinoite](https://fedoraproject.org/atomic-desktops/kinoite/).
+
 The signing key and `/etc/containers/policy.json` entry for this image are
 baked into the image itself (`files/system/etc/pki/containers/kinoite-x27.pub`,
 `files/system/etc/containers/policy.json`) — same way the base image trusts
