@@ -30,6 +30,7 @@ modules:
         - fish
         - htop
         - nano
+        - nvtop
         - papirus-icon-theme
         - pciutils
         - lm_sensors
@@ -38,6 +39,8 @@ modules:
         - firefox
         - firefox-langpacks
         - khelpcenter
+        - plasma-discover
+        - plasma-discover-notifier
 
   - type: default-flatpaks
     configurations:

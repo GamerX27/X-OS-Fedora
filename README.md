@@ -1,88 +1,86 @@
 # kinoite-x27
 
-A custom [Fedora Kinoite](https://kinoite.fedoraproject.org/) image, built with
-[BlueBuild](https://blue-build.org/), that bakes in the configuration from
-[X27/X-Linuxtool](https://codeberg.org/X27/X-Linuxtool)'s `Fedora-Kionite-Setup.sh`
-plus the KDE tweaks from `Fedora-PostSetup.sh`.
+Custom Fedora Kinoite image built with [BlueBuild](https://blue-build.org/).
+Source: [`recipes/recipe.yml`](recipes/recipe.yml). Published to
+`ghcr.io/gamerx27/kinoite-x27`.
 
-## What's in the image
+## What's in it
 
-- **Brave Origin**, layered straight into the image from Brave's official repo,
-  the same way Firefox is normally shipped on stock Kinoite. `firefox` /
-  `firefox-langpacks` / `khelpcenter` are removed, and Brave Origin is set as the
-  default browser (`/etc/xdg/mimeapps.list`).
-- **KDE tweaks**: Breeze Dark + Papirus-Dark icons, Konsole with Fish as its
-  default profile and menu bar/toolbar/tab bar hidden, Fish as the default
-  shell, plus `fastfetch`, `htop`, `nano`, `papirus-icon-theme`, `pciutils`,
-  `lm_sensors` layered in. See **Deploying → step 3** below — these only apply
-  automatically to a brand-new user profile.
-- **Flatpaks** (Flathub, system-wide): VLC, Jellyfin, LocalSend, Bazaar, Finamp.
-  The `default-flatpaks` module also switches the default flatpak remote from
-  Fedora's own to Flathub.
-- NetworkManager connectivity-check disabled. Automatic updates run via
-  `bootc-fetch-apply-updates.timer` (enabled by default on this base image);
-  `/etc/rpm-ostreed.conf` sets `AutomaticUpdatePolicy=stage` for any manual
-  `rpm-ostree upgrade` runs too.
+- Brave Origin, layered in from Brave's official repo. `firefox`,
+  `firefox-langpacks`, `khelpcenter`, `plasma-discover`, `plasma-discover-notifier`
+  removed. Brave Origin set as default browser.
+- Dark theme (Breeze Dark), Papirus-Dark icons, Konsole set to Fish with no
+  menu bar/toolbar/tab bar, Fish as the default shell.
+- `fastfetch`, `htop`, `nvtop`, `nano`, `papirus-icon-theme`, `pciutils`,
+  `lm_sensors`.
+- Flathub flatpaks (system-wide): VLC, Jellyfin, LocalSend, Bazaar, Finamp.
+- NetworkManager connectivity check disabled. Updates apply automatically via
+  `bootc-fetch-apply-updates.timer`.
 
-## Deploying
+## First-time rebase
 
-### 1. Make the package public
-
-The image is private on ghcr.io by default. On GitHub: this repo → **Packages**
-(right sidebar) → `kinoite-x27` → package settings → **Change visibility** →
-**Public**. Skip this only if you've instead logged in locally with
-`sudo podman login ghcr.io` using a token that has `read:packages`.
-
-### 2. Rebase
+The signing key and `/etc/containers/policy.json` entry for this image are
+baked into the image itself (`files/system/etc/pki/containers/kinoite-x27.pub`,
+`files/system/etc/containers/policy.json`) — same way the base image trusts
+itself. That means the very first pull (from your *current*, pre-rebase
+system, which doesn't have that policy yet) has to be unverified, but the
+moment you're on this image you already have everything needed for verified
+pulls, with no manual key/policy setup:
 
 ```
 sudo rpm-ostree rebase ostree-unverified-registry:ghcr.io/gamerx27/kinoite-x27:latest
 systemctl reboot
 ```
 
-Confirm it worked after reboot:
+Then switch to verified pulls — no setup needed, it's already there:
 
 ```
-rpm-ostree status
+sudo rpm-ostree rebase ostree-image-signed:docker://ghcr.io/gamerx27/kinoite-x27:latest
+systemctl reboot
 ```
 
-should show `ghcr.io/gamerx27/kinoite-x27:latest` as the booted deployment.
+After the second reboot: `rpm-ostree status` should show
+`ghcr.io/gamerx27/kinoite-x27:latest` as booted, with `GPG: N/A, Signed: true`.
 
-### 3. Apply the KDE tweaks to your account
+## Getting later updates
 
-**This step is required — don't skip it.** The dark theme, Papirus-Dark icons,
-Konsole profile, and default shell are all baked into the image as *system-wide
-defaults* (`/etc/xdg/kdeglobals`, `/etc/xdg/konsolerc`, `/etc/default/useradd`).
-KDE's config system only falls back to those for keys a user's own config
-doesn't already set — and if you're rebasing a machine you already used, your
-account already has its own `~/.config/kdeglobals` etc. from before, with
-those same keys already set to the old values. So the system-wide defaults
-never get consulted for your existing account; they'd only apply automatically
-to a brand-new user created after this rebase.
-
-To fix that, a helper script is baked into the image at `/usr/bin/x27-apply-tweaks`.
-Run it once, as yourself, **without sudo**:
+Already rebased? Updates apply on their own (`bootc-fetch-apply-updates.timer`
+checks and stages automatically). To force one immediately:
 
 ```
-x27-apply-tweaks
+sudo rpm-ostree upgrade
+systemctl reboot
 ```
 
-It writes the dark theme, Papirus-Dark icon theme, and Konsole profile
-directly into your own `~/.config`/`~/.local/share`, sets Fish as your login
-shell, and restarts Plasmashell. Log out and back in afterwards so the shell
-and Konsole changes fully apply.
+## Existing accounts: two things rebasing can't fix
 
-### 4. Verify
+- **Theme/shell/Konsole don't apply.** They're system-wide defaults
+  (`/etc/xdg/kdeglobals`, `/etc/xdg/konsolerc`, `/etc/default/useradd`) that
+  only take effect for a brand-new user profile — your account already has
+  its own `~/.config` with the old values, which always wins. Apply them
+  yourself once:
+  ```
+  plasma-apply-lookandfeel -a org.kde.breezedark.desktop
+  kwriteconfig6 --file kdeglobals --group Icons --key Theme Papirus-Dark
+  chsh -s /usr/bin/fish "$USER"
+  ```
+- **KDE games/apps still installed.** If this machine was originally set up
+  by Anaconda, `org.kde.elisa`/`kmahjongg`/`kolourpaint`/`kmines` are
+  pre-existing Flatpak state under `/var` — rebasing the OS image never
+  touches it. Remove them yourself:
+  ```
+  sudo flatpak remove --noninteractive org.kde.elisa org.kde.kmahjongg org.kde.kolourpaint org.kde.kmines
+  sudo flatpak remote-modify --disable fedora fedora-testing
+  ```
 
-- `brave-origin` launches and is the default browser (`xdg-mime query default x-scheme-handler/https`).
-- System Settings → Appearance shows Breeze Dark, and icons are Papirus-Dark.
-- A new Konsole window opens in Fish with no menu bar/toolbar/tab bar.
-- `fish`, `fastfetch`, `htop`, `nano` are all on `$PATH`.
-- Flathub apps installed: `flatpak list | grep -E 'VLC|Jellyfin|localsend|Bazaar|finamp'`
-  (these install automatically on first boot via the `default-flatpaks` module
-  and may take a minute or two after login to appear).
+## Verify
+
+- `brave-origin` is installed and the default browser.
+- Dark theme + Papirus-Dark icons, Konsole in Fish with no menu/toolbar/tab bar.
+- `fastfetch`, `htop`, `nvtop`, `nano` on `$PATH`; Discover is gone.
+- `flatpak list` shows VLC, Jellyfin, LocalSend, Bazaar, Finamp (installed
+  automatically on first boot, may take a minute or two).
 
 ## Building
 
-This repo builds automatically via `.github/workflows/build.yml` once pushed to
-GitHub. It publishes to `ghcr.io/gamerx27/kinoite-x27`.
+Builds automatically via `.github/workflows/build.yml` on push to `main`.
