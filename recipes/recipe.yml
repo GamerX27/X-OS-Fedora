@@ -52,9 +52,10 @@ modules:
           - io.github.kolunmi.Bazaar
           - com.unicornsonlsd.finamp
 
-  - type: systemd
-    system:
-      enabled:
-        - rpm-ostreed-automatic.timer
+  # Automatic updates are already handled by bootc-fetch-apply-updates.timer,
+  # which is enabled by default on this base image; the classic
+  # rpm-ostreed-automatic.timer is intentionally masked on bootc images, so
+  # there's nothing to enable here. /etc/rpm-ostreed.conf still sets
+  # AutomaticUpdatePolicy=stage for any manual `rpm-ostree upgrade` runs.
 
   - type: signing
