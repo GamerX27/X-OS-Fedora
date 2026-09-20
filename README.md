@@ -8,7 +8,7 @@ everything applied instead of needing a post-install script run.
 
 ## What's in the image
 
-- **Brave Origin**, layered as a native `rpm-ostree` package (Brave's official repo),
+- **Brave Origin**, layered straight into the image from Brave's official repo,
   the same way Firefox is normally shipped on stock Kinoite. `firefox` /
   `firefox-langpacks` / `khelpcenter` are removed, and Brave Origin is set as the
   default browser (`/etc/xdg/mimeapps.list`).
@@ -20,8 +20,10 @@ everything applied instead of needing a post-install script run.
 - **Flatpaks** (Flathub, system-wide): VLC, Jellyfin, LocalSend, Bazaar, Finamp.
   The `default-flatpaks` module also switches the default flatpak remote from
   Fedora's own to Flathub.
-- NetworkManager connectivity-check disabled, and `rpm-ostree` automatic staged
-  updates enabled (`rpm-ostreed-automatic.timer`).
+- NetworkManager connectivity-check disabled. Automatic updates run via
+  `bootc-fetch-apply-updates.timer` (enabled by default on this base image);
+  `/etc/rpm-ostreed.conf` sets `AutomaticUpdatePolicy=stage` for any manual
+  `rpm-ostree upgrade` runs too.
 
 ## One-time manual step after rebasing an *existing* install
 
@@ -36,7 +38,7 @@ chsh -s /usr/bin/fish "$USER"
 
 This repo builds automatically via `.github/workflows/build.yml` once pushed to
 GitHub (requires `SIGNING_SECRET` set in the repo's Actions secrets — see
-"Signing" below). It publishes to `ghcr.io/<your-github-user>/kinoite-x27`.
+"Signing" below). It publishes to `ghcr.io/gamerx27/kinoite-x27`.
 
 ## Signing
 
@@ -50,15 +52,40 @@ gh secret set SIGNING_SECRET < cosign.private
 
 ## Rebasing onto this image
 
-First rebase unsigned to pull the image, then switch to verified/signed pulls:
+The package must be **public** on ghcr.io first (Package settings → Change
+visibility → Public), otherwise the pull will be rejected as unauthorized.
+
+Rebase unsigned to pull the image:
 
 ```
-rpm-ostree rebase ostree-unverified-registry:ghcr.io/<your-github-user>/kinoite-x27:latest
+sudo rpm-ostree rebase ostree-unverified-registry:ghcr.io/gamerx27/kinoite-x27:latest
 systemctl reboot
 ```
 
-After reboot, switch to signature-verified pulls going forward:
+### Optional: switch to signature-verified pulls
+
+Running `ostree-image-signed:docker://...` directly will fail with
+`containers-policy.json specifies a default of insecureAcceptAnything;
+refusing usage` — the system's default container policy doesn't know how to
+verify this image's signature yet. Tell it how, using the `cosign.pub` key
+committed in this repo, **before** running the signed rebase:
 
 ```
-sudo rpm-ostree rebase ostree-image-signed:docker://ghcr.io/<your-github-user>/kinoite-x27:latest
+sudo mkdir -p /etc/pki/containers
+sudo curl -fsSL -o /etc/pki/containers/kinoite-x27.pub \
+  https://raw.githubusercontent.com/GamerX27/X27-Kionite/main/cosign.pub
+
+sudo python3 -c "
+import json
+path = '/etc/containers/policy.json'
+with open(path) as f:
+    policy = json.load(f)
+policy.setdefault('transports', {}).setdefault('docker', {})['ghcr.io/gamerx27/kinoite-x27'] = [
+    {'type': 'sigstoreSigned', 'keyPath': '/etc/pki/containers/kinoite-x27.pub'}
+]
+with open(path, 'w') as f:
+    json.dump(policy, f, indent=2)
+"
+
+sudo rpm-ostree rebase ostree-image-signed:docker://ghcr.io/gamerx27/kinoite-x27:latest
 ```
