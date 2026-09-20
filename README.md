@@ -48,11 +48,12 @@ not yours):
 plasma-apply-lookandfeel -a org.kde.breezedark.desktop
 kwriteconfig6 --file kdeglobals --group Icons --key Theme Papirus-Dark
 chsh -s /usr/bin/fish "$USER"
-kquitapp6 plasmashell; kstart6 plasmashell >/dev/null 2>&1 &
+kquitapp6 plasmashell; kstart plasmashell >/dev/null 2>&1 &
 ```
 
-Log out and back in afterward — the shell change needs a new session, and
-Konsole needs to be relaunched to pick up the profile.
+`chsh` asks for **your own login password**, not root's — that's normal.
+Then log out and back in: the shell change needs a new session, and Konsole
+needs to be relaunched to pick up the profile.
 
 Old Anaconda-installed KDE games may still be around:
 
