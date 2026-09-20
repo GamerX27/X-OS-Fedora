@@ -13,24 +13,31 @@ modules:
       - source: system
         destination: /
 
-  - type: rpm-ostree
+  # This base image is bootc-style, so package changes are made with the dnf
+  # module (plain `dnf install`/`dnf remove` in the build container) rather
+  # than the rpm-ostree module, which requires a live ostree-booted system.
+  - type: dnf
     repos:
-      - https://brave-browser-rpm-release.s3.brave.com/brave-browser.repo
-    keys:
-      - https://brave-browser-rpm-release.s3.brave.com/brave-core.asc
+      files:
+        - https://brave-browser-rpm-release.s3.brave.com/brave-browser.repo
+      keys:
+        - https://brave-browser-rpm-release.s3.brave.com/brave-core.asc
+      cleanup: true
     install:
-      - brave-origin
-      - fastfetch
-      - fish
-      - htop
-      - nano
-      - papirus-icon-theme
-      - pciutils
-      - lm_sensors
+      packages:
+        - brave-origin
+        - fastfetch
+        - fish
+        - htop
+        - nano
+        - papirus-icon-theme
+        - pciutils
+        - lm_sensors
     remove:
-      - firefox
-      - firefox-langpacks
-      - khelpcenter
+      packages:
+        - firefox
+        - firefox-langpacks
+        - khelpcenter
 
   - type: default-flatpaks
     configurations:
