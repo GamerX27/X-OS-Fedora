@@ -28,10 +28,6 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v5
 
-      - name: Stamp build date into recipe
-        run: |
-          sed -i "s/\$BUILD_DATE/$(date -u +%Y-%m-%d)/g" "recipes/${{ matrix.recipe }}"
-
       - name: Build custom image
         uses: blue-build/github-action@v1.10
         with:

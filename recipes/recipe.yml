@@ -151,6 +151,21 @@ modules:
   # Plymouth pinned explicitly to Fedora's own default boot theme so it can't
   # silently drift from whatever the base image or kernel swap above leaves
   # in place; -R rebuilds the initramfs itself.
+  #
+  # /etc/os-release PRETTY_NAME/BUILD_ID get the actual build date stamped in
+  # directly with `date` here, inside the real build, rather than via
+  # BlueBuild's os-release module fed by a placeholder substituted in a
+  # workflow step beforehand - blue-build/github-action does its own
+  # `actions/checkout` internally before building, which clobbers any
+  # uncommitted edits a prior workflow step made to the recipe file, so that
+  # approach silently never took effect (confirmed in CI: the built image
+  # kept the literal, unsubstituted "$BUILD_DATE" placeholder). Only
+  # PRETTY_NAME/BUILD_ID are touched, not ID/ID_LIKE/VERSION_ID, so the image
+  # still self-identifies as plain Fedora everywhere that matters (dnf/copr
+  # releasever handling upstream of this already happened by this point
+  # anyway, since this module runs last). BootLoaderSpec also derives the
+  # GRUB boot-menu entry's title from PRETTY_NAME, so this is what fixes that
+  # too.
   - type: containerfile
     snippets:
       - |
@@ -173,16 +188,9 @@ modules:
             fi
       - |
         RUN plymouth-set-default-theme -R bgrt
-
-  # Only PRETTY_NAME/BUILD_ID are touched (not ID/ID_LIKE/VERSION_ID), so the
-  # image still self-identifies as Fedora everywhere that reads os-release
-  # (About page, hostnamectl, fastfetch, dnf/copr releasever handling) - and
-  # placed last, after every dnf/copr module, so nothing upstream of this
-  # depends on VERSION_ID for repo/releasever detection. $BUILD_DATE is
-  # substituted by the build workflow before this recipe is built.
-  - type: os-release
-    properties:
-      PRETTY_NAME: "Fedora Kinoite (kinoite-x27, build $BUILD_DATE)"
-      BUILD_ID: "$BUILD_DATE"
+      - |
+        RUN BUILD_DATE="$(date -u +%Y-%m-%d)" \
+            && sed -i "s|^PRETTY_NAME=.*|PRETTY_NAME=\"Fedora Kinoite (kinoite-x27, build ${BUILD_DATE})\"|" /etc/os-release \
+            && echo "BUILD_ID=\"${BUILD_DATE}\"" >> /etc/os-release
 
   - type: signing
