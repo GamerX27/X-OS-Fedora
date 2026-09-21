@@ -46,7 +46,7 @@ modules:
         - plasma-discover-notifier
         - NetworkManager-config-connectivity-fedora
 
-  - type: default-flatpaks
+  - type: default-flatpaks@v1
     notify: true
     system:
       install:
