@@ -3,11 +3,19 @@ on:
   schedule:
     - cron: "00 17 * * 0" # rebuild weekly, Sundays at 5:00 PM UTC, to pick up upstream Kinoite/Brave updates
   push:
-    paths-ignore:
-      - "**.md"
+    paths:
+      - "recipes/**"
+      - "files/**"
+      - "cosign.pub"
+      - ".github/workflows/build.yml"
     branches:
       - main
   pull_request:
+    paths:
+      - "recipes/**"
+      - "files/**"
+      - "cosign.pub"
+      - ".github/workflows/build.yml"
   workflow_dispatch:
     inputs:
       recipe:
