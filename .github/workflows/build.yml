@@ -19,6 +19,7 @@ jobs:
         recipe:
           - recipe.yml
           - recipe-lts.yml
+          - recipe-gaming.yml
     runs-on: ubuntu-24.04
     permissions:
       contents: read

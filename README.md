@@ -2,8 +2,10 @@
 
 Custom Fedora Kinoite, built with [BlueBuild](https://blue-build.org/).
 Recipe: [`recipes/recipe.yml`](recipes/recipe.yml) (also
-[`recipes/recipe-lts.yml`](recipes/recipe-lts.yml) for the LTS-kernel variant)
-Image: `ghcr.io/gamerx27/x-os-fedora` (LTS: `ghcr.io/gamerx27/x-os-fedora-lts`)
+[`recipes/recipe-lts.yml`](recipes/recipe-lts.yml) for the LTS-kernel variant, and
+[`recipes/recipe-gaming.yml`](recipes/recipe-gaming.yml) for the gaming/AMD variant)
+Image: `ghcr.io/gamerx27/x-os-fedora` (LTS: `ghcr.io/gamerx27/x-os-fedora-lts`,
+gaming: `ghcr.io/gamerx27/x-os-gaming`)
 
 ## What's in it
 
@@ -50,6 +52,10 @@ systemctl reboot
 
 **Want the LTS kernel instead of CachyOS's rolling one?** Use
 `x-os-fedora-lts` in place of `x-os-fedora` in the commands above.
+
+**Want the gaming/AMD variant?** Use `x-os-gaming` in place of `x-os-fedora` —
+see [Gaming variant](#gaming-variant-x-os-gaming) below for what it adds and
+its own caveats.
 
 ## Update
 
@@ -109,9 +115,45 @@ rolling one. Both instead of stock Fedora's kernel.
   yourself with `sbsigntools`/`mokutil` (both included in the image) — see the
   copr page's Secure Boot instructions.
 
+## Gaming variant (`x-os-gaming`)
+
+Everything in `x-os-fedora` above, plus:
+
+- Steam, GameMode, Gamescope, MangoHud, GOverlay
+- [Faugus Launcher](https://copr.fedorainfracloud.org/coprs/faugus/faugus-launcher/) and
+  [Heroic Games Launcher](https://copr.fedorainfracloud.org/coprs/atim/heroic-games-launcher/)
+  (both via COPR)
+- RPM Fusion free+nonfree enabled, full multimedia codecs
+  (`ffmpeg` swap, `@multimedia` group), plus RPM Fusion's "freeworld" proprietary
+  VA-API/Vulkan codec drivers (hardware H.264/HEVC/VC1/AV1 encode+decode) — see
+  **codec licensing note** below
+- Mesa rebuilt from source, restricted to AMD drivers only (radeonsi + RADV),
+  merged with the freeworld codec drivers into one build so they never
+  version-skew against each other
+- [Proton-CachyOS](https://github.com/CachyOS/proton-cachyos) auto-installs/updates
+  itself into Steam's compatibility tools on first graphical login (runs as a
+  `systemd --user` unit — it can't be baked into the image build itself, since
+  it refuses to run as root and needs a real Steam-populated `$HOME`)
+- Steam, Konsole, and Brave pinned as the only default taskbar launchers
+  (**new accounts only** — see caveat below)
+
+**Codec licensing note:** the freeworld VA-API/Vulkan drivers bundle
+patent-encumbered H.264/HEVC/VC1 codec binaries. This is the same category of
+exposure RPM Fusion itself manages by hosting outside the US. Be aware of
+that before relying on or redistributing this image in a jurisdiction where
+software patents on these codecs are enforced.
+
+**Taskbar pin and Proton-CachyOS only apply to new accounts / first login** —
+same caveat as the theme/Konsole/shell defaults under
+[If you rebased an existing install](#if-you-rebased-an-existing-install)
+above. On an existing account, pin Steam/Konsole/Brave manually (right-click
+→ Pin to Task Manager) and run
+`/usr/libexec/x-os-gaming/proton-cachyos-installer.sh` yourself once.
+
 ## Build
 
 Pushes to `main` build and publish automatically via GitHub Actions, which
 also rebuilds weekly (Sundays) to pick up upstream Kinoite/Brave/kernel
 updates. Each weekly build stamps that date into `/etc/os-release`
-(`PRETTY_NAME`/`BUILD_ID`) so you can tell which build you're on.
+(`PRETTY_NAME`/`BUILD_ID`) so you can tell which build you're on. The gaming
+variant's Mesa rebuild is the slowest part of the matrix by a wide margin.

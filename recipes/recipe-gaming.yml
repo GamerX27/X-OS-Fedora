@@ -1,0 +1,328 @@
+---
+# yaml-language-server: $schema=https://schema.blue-build.org/recipe-v1.json
+
+name: x-os-gaming
+description: X-OS-Fedora (Gaming) - X-OS-Fedora plus Steam, Faugus, Heroic, RPM Fusion codecs, and a custom AMD-only from-source Mesa
+base-image: ghcr.io/blue-build/base-images/fedora-kinoite
+image-version: latest
+
+# Builds a from-source Mesa restricted to AMD drivers (radeonsi + RADV), plus RPM Fusion's
+# "freeworld" VA-API/Vulkan drivers (proprietary H.264/HEVC/VC1/AV1 hardware codec support
+# Fedora's own Mesa can't ship) built from the SAME pinned Mesa version, so the two never
+# version-skew against each other - that exact skew is a known real-world breakage:
+# github.com/coreos/rpm-ostree/issues/4592. `from: fedora:44` matches this image's own base
+# (confirmed by pulling ghcr.io/gamerx27/x-os-fedora:latest and checking /etc/os-release).
+stages:
+  - name: mesa-builder
+    from: fedora:44
+    modules:
+      - type: containerfile
+        snippets:
+          - |
+            RUN set -eux \
+                && dnf5 -y install rpm-build rpmdevtools dnf5-plugins 'dnf-command(builddep)' \
+                     'dnf-command(config-manager)' git rpm-sign \
+                && dnf5 -y config-manager setopt fedora-source.enabled=1 updates-source.enabled=1 \
+                && dnf5 -y install https://mirrors.rpmfusion.org/free/fedora/rpmfusion-free-release-$(rpm -E %fedora).noarch.rpm \
+                && dnf5 -y config-manager setopt rpmfusion-free-source.enabled=1 \
+                && dnf5 -y download --source mesa \
+                && dnf5 -y download --source mesa-freeworld \
+                && useradd -m builder \
+                && rpm -i mesa-[0-9]*.src.rpm --define "_topdir /home/builder/rpmbuild/fedora" \
+                && rpm -i mesa-freeworld-*.src.rpm --define "_topdir /home/builder/rpmbuild/freeworld" \
+                && chown -R builder:builder /home/builder/rpmbuild \
+                && dnf5 -y builddep /home/builder/rpmbuild/fedora/SPECS/mesa.spec \
+                && dnf5 -y builddep /home/builder/rpmbuild/freeworld/SPECS/mesa-freeworld.spec
+      - type: containerfile
+        snippets:
+          - |
+            RUN set -eux; \
+                FEDORA_SPEC=/home/builder/rpmbuild/fedora/SPECS/mesa.spec; \
+                FREEWORLD_SPEC=/home/builder/rpmbuild/freeworld/SPECS/mesa-freeworld.spec; \
+                MESA_VER=$(rpm -q --qf '%{VERSION}\n' --specfile "$FEDORA_SPEC" | head -1); \
+                sed -i "s/^Version:.*/Version:        ${MESA_VER}/" "$FREEWORLD_SPEC"; \
+                for SPEC in "$FEDORA_SPEC" "$FREEWORLD_SPEC"; do \
+                  sed -i \
+                    -e "s/^Release:.*/&.amdgaming1/" \
+                    -e "/-Dgallium-drivers=/s/=.*/=radeonsi,zink,llvmpipe' \\\\/" \
+                    -e "/-Dvulkan-drivers=/s/=.*/=amd' \\\\/" \
+                    "$SPEC"; \
+                done; \
+                su - builder -c "rpmbuild -bb --define '_topdir /home/builder/rpmbuild/fedora' $FEDORA_SPEC"; \
+                su - builder -c "rpmbuild -bb --define '_topdir /home/builder/rpmbuild/freeworld' $FREEWORLD_SPEC"; \
+                mkdir -p /out/fedora /out/freeworld; \
+                cp /home/builder/rpmbuild/fedora/RPMS/*/*.rpm /out/fedora/; \
+                cp /home/builder/rpmbuild/freeworld/RPMS/*/*.rpm /out/freeworld/
+
+modules:
+  # Ship system-wide config files (dark theme, Konsole, shell default, NM, rpm-ostreed,
+  # default browser - same as recipe.yml) plus the gaming-only overlay (Proton-CachyOS
+  # installer + its systemd unit, and the taskbar launcher pins).
+  - type: files
+    files:
+      - source: system
+        destination: /
+      - source: gaming
+        destination: /
+
+  # This base image is bootc-style, so package changes are made with the dnf
+  # module (plain `dnf install`/`dnf remove` in the build container) rather
+  # than the rpm-ostree module, which requires a live ostree-booted system.
+  - type: dnf
+    repos:
+      files:
+        - https://brave-browser-rpm-release.s3.brave.com/brave-browser.repo
+      keys:
+        - https://brave-browser-rpm-release.s3.brave.com/brave-core.asc
+      cleanup: true
+    install:
+      packages:
+        - brave-origin
+        - fastfetch
+        - fish
+        - htop
+        - nano
+        - nvtop
+        - papirus-icon-theme
+        - pciutils
+        - lm_sensors
+        - easyeffects
+        - distrobox
+    remove:
+      packages:
+        - firefox
+        - firefox-langpacks
+        - khelpcenter
+        - plasma-discover
+        - plasma-discover-notifier
+        - NetworkManager-config-connectivity-fedora
+
+  # topgrade drives updates manually now (system image, flatpaks, etc. in one
+  # command) instead of bootc's silent background auto-update - see the
+  # systemd module below, which masks bootc-fetch-apply-updates.timer and
+  # enables a weekly reminder to run it.
+  - type: dnf
+    repos:
+      copr:
+        - lilay/topgrade
+      cleanup: true
+    install:
+      packages:
+        - topgrade
+
+  # bootc-fetch-apply-updates.timer is enabled by default on this base image
+  # and silently downloads+applies updates in the background; masked here in
+  # favor of running `topgrade` manually (it covers the system image via
+  # rpm-ostree/bootc as well as flatpaks, so one command replaces the auto
+  # timer). topgrade-reminder.timer (files/systemd/user/) nudges the user
+  # weekly via a desktop notification - see files/systemd/user/. The classic
+  # rpm-ostreed-automatic.timer is already masked on bootc images regardless.
+  # /etc/rpm-ostreed.conf still sets AutomaticUpdatePolicy=stage for any
+  # manual `rpm-ostree upgrade` runs.
+  - type: systemd
+    system:
+      masked:
+        - bootc-fetch-apply-updates.timer
+    user:
+      enabled:
+        - topgrade-reminder.timer
+
+  # CachyOS kernel (BORE scheduler). Requires an x86_64-v3 CPU (any Zen-family
+  # AMD, Haswell+ Intel) - confirmed fine for the 5900X/3700X this image
+  # targets. sbsigntools/mokutil are here only so you can sign the kernel
+  # yourself if Secure Boot is enabled; the kernel itself ships unsigned.
+  # https://copr.fedorainfracloud.org/coprs/bieszczaders/kernel-cachyos/
+  # cleanup is deliberately NOT set here (defaults to false): the copr repo
+  # must still be enabled for the containerfile module below, which is where
+  # kernel-cachyos actually gets installed. Setting cleanup: true disables the
+  # repo as soon as THIS module ends, before that later install ever runs -
+  # that's exactly what broke the first attempt ("No match for argument:
+  # kernel-cachyos"). The repo gets disabled manually at the end of that swap
+  # step instead, once the install is actually done.
+  - type: dnf
+    repos:
+      copr:
+        - bieszczaders/kernel-cachyos
+    install:
+      packages:
+        - sbsigntools
+        - mokutil
+
+  # The swap itself can't be plain dnf install/remove: kernel-cachyos
+  # Provides: kernel, so removing "kernel" after installing it would take the
+  # new kernel right back out - remove the stock kernel first, then install.
+  # tsflags=noscripts skips kernel-cachyos's %posttrans (it runs
+  # kernel-install/dracut, which fails in a container build since nothing has
+  # run depmod yet); depmod is run manually instead. virtualbox-guest-additions
+  # is reinstalled afterward since it Requires: kernel and gets removed as a
+  # side effect of removing kernel-core.
+  - type: containerfile
+    snippets:
+      - |
+        RUN set -eu \
+            && STOCK_KVER="$(rpm -q --queryformat '%{VERSION}-%{RELEASE}.%{ARCH}\n' kernel-core | tail -n1)" \
+            && echo "Removing Fedora kernel ${STOCK_KVER}" \
+            && dnf5 -y remove --no-autoremove \
+                 kernel kernel-core kernel-modules kernel-modules-core kernel-modules-extra \
+            && rm -rf "/usr/lib/modules/${STOCK_KVER}" \
+            && dnf5 -y install --setopt=tsflags=noscripts \
+                 kernel-cachyos kernel-cachyos-devel-matched \
+            && dnf5 -y install --skip-unavailable virtualbox-guest-additions \
+            && dnf5 -y copr disable bieszczaders/kernel-cachyos \
+            && dnf5 clean all \
+            && test "$(ls -1 /usr/lib/modules | wc -l)" -eq 1 \
+            && KVER="$(ls -1 /usr/lib/modules)" \
+            && test -f "/usr/lib/modules/${KVER}/vmlinuz" \
+            && depmod -a "${KVER}" \
+            && test -f "/usr/lib/modules/${KVER}/modules.dep" \
+            && echo "Kernel now: ${KVER}"
+
+  # Regenerates initramfs to pick up the kernel swap above. Must run after it.
+  - type: initramfs
+
+  # RPM Fusion + gaming COPRs + gaming packages. Installing steam/gamescope/etc. here pulls
+  # in stock mesa-vulkan-drivers as a dependency; intentional - it gets overridden further
+  # down once the custom Mesa build (mesa-builder stage above) is ready.
+  # https://copr.fedorainfracloud.org/coprs/atim/heroic-games-launcher/
+  # https://copr.fedorainfracloud.org/coprs/faugus/faugus-launcher/
+  - type: dnf
+    repos:
+      nonfree: rpmfusion
+      copr:
+        - atim/heroic-games-launcher
+        - faugus/faugus-launcher
+      cleanup: true
+    install:
+      skip-unavailable: true
+      packages:
+        - steam
+        - steam-devices
+        - gamemode
+        - gamescope
+        - mangohud
+        - goverlay
+        - faugus-launcher
+        - heroic-games-launcher-bin
+        - mesa-vulkan-drivers
+        - mesa-vulkan-drivers.i686
+        - vulkan-loader
+        - vulkan-tools
+        - amd-gpu-firmware
+
+  # RPM Fusion multimedia codecs (ffmpeg swap, @multimedia group) - same containerfile-RUN
+  # style used elsewhere in this recipe rather than a script module (unused in this repo).
+  # https://rpmfusion.org/Howto/Multimedia
+  - type: containerfile
+    snippets:
+      - |
+        RUN dnf5 -y config-manager setopt fedora-cisco-openh264.enabled=1 \
+            && dnf5 -y swap ffmpeg-free ffmpeg --allowerasing \
+            && dnf5 -y install @multimedia --setopt="install_weak_deps=False" --exclude=PackageKit-gstreamer-plugin
+
+  # Defensive assertion (matches this repo's existing style, e.g. the kernel-swap module
+  # above) that the desktop-file IDs files/gaming's layout.js just pinned in the taskbar
+  # actually exist now that steam/faugus/heroic are installed.
+  - type: containerfile
+    snippets:
+      - |
+        RUN test -f /usr/share/applications/steam.desktop \
+            && test -f /usr/share/applications/org.kde.konsole.desktop \
+            && test -f /usr/share/applications/brave-origin.desktop
+
+  # Pull the custom Mesa RPMs (Fedora-based core + freeworld VA/Vulkan) from the builder stage
+  - type: copy
+    from: mesa-builder
+    src: /out
+    dest: /tmp/mesa-rpms/
+
+  # Install the custom Mesa builds LAST (relative to the stock mesa-vulkan-drivers pulled in
+  # by the gaming-packages module above) so they win. mesa-vulkan-drivers-freeworld Conflicts
+  # with stock mesa-vulkan-drivers (same rule as RPM Fusion's own
+  # `dnf swap mesa-vulkan-drivers{,-freeworld}`), so install the Fedora-based core drivers
+  # first, excluding mesa-vulkan-drivers, then swap in the freeworld Vulkan driver, then add
+  # the freeworld VA-API driver for hardware video codec support.
+  - type: containerfile
+    snippets:
+      - |
+        RUN set -eux; \
+            shopt -s extglob; \
+            dnf5 -y install /tmp/mesa-rpms/fedora/!(mesa-vulkan-drivers*).rpm --allowerasing; \
+            dnf5 -y swap mesa-vulkan-drivers /tmp/mesa-rpms/freeworld/mesa-vulkan-drivers-freeworld*.rpm --allowerasing; \
+            dnf5 -y install /tmp/mesa-rpms/freeworld/mesa-va-drivers-freeworld*.rpm --allowerasing; \
+            rpm -q mesa-dri-drivers mesa-vulkan-drivers-freeworld mesa-va-drivers-freeworld; \
+            rm -rf /tmp/mesa-rpms
+
+  # X-Linuxtool (X27's interactive setup/tooling launcher) installed as a
+  # standing command - https://codeberg.org/X27/X-Linuxtool. Its submenu
+  # scripts still fetch themselves at runtime, same as its normal
+  # curl-pipe-bash usage; this just installs the launcher itself.
+  #
+  # Brave debranding/hardening policy from the same project, applied here at
+  # build time (writes /etc/brave/policies/managed/) since Brave Origin is
+  # already installed above and this is a native RPM, not Flatpak, so the
+  # script's Flatpak branch is a no-op. Its /etc/hosts telemetry-blocking step
+  # is tolerated-but-not-fatal: buildah bind-mounts /etc/hosts read-only
+  # during RUN, so that part of the script always fails here regardless of
+  # what writes to it (confirmed in CI - "tee: /etc/hosts: Read-only file
+  # system"); the policy JSON (the part that actually matters) is verified
+  # with an explicit test instead of trusting the script's own exit code.
+  #
+  # LC_TIME=C.UTF-8: localectl (which talks to systemd over D-Bus) isn't
+  # usable during a container build, so this is set directly in
+  # /etc/locale.conf instead - preserving LANG/etc if the base image already
+  # sets them there, rather than overwriting the whole file.
+  #
+  # Plymouth pinned explicitly to Fedora's own default boot theme so it can't
+  # silently drift from whatever the base image or kernel swap above leaves
+  # in place; -R rebuilds the initramfs itself.
+  #
+  # /etc/os-release PRETTY_NAME/BUILD_ID get the actual build date stamped in
+  # directly with `date` here, inside the real build, rather than via
+  # BlueBuild's os-release module fed by a placeholder substituted in a
+  # workflow step beforehand - blue-build/github-action does its own
+  # `actions/checkout` internally before building, which clobbers any
+  # uncommitted edits a prior workflow step made to the recipe file, so that
+  # approach silently never took effect (confirmed in CI: the built image
+  # kept the literal, unsubstituted "$BUILD_DATE" placeholder). Only
+  # PRETTY_NAME/BUILD_ID are touched, not ID/ID_LIKE/VERSION_ID, so the image
+  # still self-identifies as plain Fedora everywhere that matters (dnf/copr
+  # releasever handling upstream of this already happened by this point
+  # anyway, since this module runs last). BootLoaderSpec also derives the
+  # GRUB boot-menu entry's title from PRETTY_NAME, so this is what fixes that
+  # too.
+  #
+  # fastfetch config pulled from the user's own X27-Fastfetch-Config repo at
+  # build time, same pattern as X-Linuxtool/Brave below - future edits there
+  # land automatically on the next weekly rebuild.
+  - type: containerfile
+    snippets:
+      - |
+        RUN mkdir -p /etc/xdg/fastfetch \
+            && curl -fsSL -o /etc/xdg/fastfetch/config.jsonc \
+                 https://raw.githubusercontent.com/GamerX27/X27-Fastfetch-Config/main/fastfetch/config.jsonc
+      - |
+        RUN curl -fsSL -o /usr/bin/x-linuxtool \
+              https://codeberg.org/X27/X-Linuxtool/raw/branch/main/X-Linuxtool.sh \
+            && chmod +x /usr/bin/x-linuxtool
+      - |
+        RUN set -eu; \
+            curl -fsSL -o /tmp/make_brave_great_again.sh \
+              https://codeberg.org/X27/X-Linuxtool/raw/branch/main/Desktop/Linux-Desktop/Browser/make_brave_great_again.sh; \
+            chmod +x /tmp/make_brave_great_again.sh; \
+            /tmp/make_brave_great_again.sh || true; \
+            test -f /etc/brave/policies/managed/make_brave_great_again.json; \
+            rm -f /tmp/make_brave_great_again.sh
+      - |
+        RUN if grep -q '^LC_TIME=' /etc/locale.conf 2>/dev/null; then \
+              sed -i 's/^LC_TIME=.*/LC_TIME=C.UTF-8/' /etc/locale.conf; \
+            else \
+              echo 'LC_TIME=C.UTF-8' >> /etc/locale.conf; \
+            fi
+      - |
+        RUN plymouth-set-default-theme -R bgrt
+      - |
+        RUN BUILD_DATE="$(date -u +%Y-%m-%d)" \
+            && sed -i "s|^PRETTY_NAME=.*|PRETTY_NAME=\"Fedora Kinoite (x-os-gaming, build ${BUILD_DATE})\"|" /etc/os-release \
+            && echo "BUILD_ID=\"${BUILD_DATE}\"" >> /etc/os-release
+
+  - type: signing
