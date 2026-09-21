@@ -11,7 +11,7 @@ jobs:
     name: Build ISO
     runs-on: ubuntu-latest
     permissions:
-      contents: write
+      contents: read
       packages: read
 
     steps:
@@ -31,13 +31,17 @@ jobs:
       - name: Generate checksum
         run: sha256sum kinoite-x27.iso > kinoite-x27.iso.sha256sum
 
-      - name: Publish to release
-        uses: softprops/action-gh-release@v3
+      # NOTE: this is not a GitHub Release. The ISO comes out over 2 GiB,
+      # GitHub's hard per-asset size limit for Releases - uploading it there
+      # fails with "size must be less than 2147483648". A workflow artifact
+      # has no such cap, at the cost of requiring GitHub login to download
+      # and a 60-day expiry.
+      - name: Upload ISO as artifact
+        uses: actions/upload-artifact@v7
         with:
-          tag_name: iso-latest
-          name: Latest ISO
-          make_latest: true
-          body: Rebuilt automatically from `ghcr.io/gamerx27/kinoite-x27:latest`. Always reflects the current `main` branch, not a fixed version.
-          files: |
+          name: kinoite-x27-iso
+          path: |
             kinoite-x27.iso
             kinoite-x27.iso.sha256sum
+          if-no-files-found: error
+          retention-days: 60
