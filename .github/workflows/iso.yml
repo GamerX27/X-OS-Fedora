@@ -1,0 +1,36 @@
+name: build-iso
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: "00 08 * * 0" # weekly, Sunday 08:00 UTC
+
+concurrency:
+  group: ${{ github.workflow }}
+  cancel-in-progress: true
+
+jobs:
+  build-iso:
+    name: Build ISO
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: read
+
+    steps:
+      - name: Maximize build space
+        uses: ublue-os/remove-unwanted-software@v9
+
+      - name: Install BlueBuild CLI
+        run: bash <(curl -s https://raw.githubusercontent.com/blue-build/cli/main/install.sh)
+
+      - name: Generate ISO
+        run: |
+          sudo bluebuild generate-iso --iso-name kinoite-x27.iso image ghcr.io/gamerx27/kinoite-x27:latest
+
+      - name: Upload ISO as artifact
+        uses: actions/upload-artifact@v7
+        with:
+          name: kinoite-x27-iso
+          path: ./*.iso
+          if-no-files-found: error
+          retention-days: 60

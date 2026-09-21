@@ -15,7 +15,14 @@ Image: `ghcr.io/gamerx27/kinoite-x27`
 
 ## Install
 
-No Kinoite yet? [Download the ISO](https://fedoraproject.org/atomic-desktops/kinoite/).
+**Fresh machine, no OS yet:** a custom installer ISO with everything in this
+repo already baked in is built weekly (and on demand) by
+[the `build-iso` workflow](.github/workflows/iso.yml) — grab it from that
+workflow's latest run under **Actions → build-iso → Artifacts**. Flash it
+(Fedora Media Writer works) and install like any other Fedora ISO.
+
+**Already running stock Fedora Kinoite:** rebase onto this image instead.
+(No Kinoite at all and don't want the custom ISO? [Grab the stock one here](https://fedoraproject.org/atomic-desktops/kinoite/).)
 
 ```
 sudo rpm-ostree rebase ostree-unverified-registry:ghcr.io/gamerx27/kinoite-x27:latest
