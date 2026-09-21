@@ -177,18 +177,24 @@ modules:
   # RPM Fusion multimedia codecs (ffmpeg swap, @multimedia group). Same libfdk-aac exclusion
   # as above, for the same reason - @multimedia can pull the same nonfree AAC codec.
   #
-  # libheif-ffmpeg is excluded for a similar version-skew reason: Fedora's `updates` repo
-  # already ships libheif-ffmpeg (pinning libheif to its newer version) before this module
-  # runs, but RPM Fusion's libheif-freeworld (the nonfree HEIF/AVIF codec @multimedia pulls
-  # in) is hard-pinned to the older libheif version it was built against and hasn't caught up
-  # yet, so the group install can't satisfy both at once ("Problem: conflicting requests" in
-  # CI). Excluding libheif-ffmpeg lets libheif-freeworld's older, matching libheif stay in
-  # place instead.
+  # libheif-ffmpeg hits the same already-installed trap as libfdk-aac above (confirmed by a
+  # failed CI run that only excluded it): Fedora's `updates` repo already ships
+  # libheif-ffmpeg, pinning `libheif` to its newer version, before this module ever runs -
+  # so it isn't a candidate in this transaction and `--exclude=libheif-ffmpeg` alone is a
+  # no-op. RPM Fusion's libheif-freeworld (the nonfree HEIF/AVIF codec @multimedia pulls in)
+  # is hard-pinned to the older libheif version it was built against and hasn't caught up
+  # yet, so with libheif-ffmpeg still installed the group install can't swap libheif at all
+  # ("Problem: conflicting requests" / "requires libheif.so.1 ... none of the providers can
+  # be installed" in CI). Removing libheif-ffmpeg first (guarded by rpm -q, a no-op once/if
+  # Fedora stops shipping it by default) clears the way for libheif-freeworld's older,
+  # matching libheif to take over; --exclude=libheif-ffmpeg on the group install itself is
+  # kept too so nothing pulls it back in during the same transaction.
   # https://rpmfusion.org/Howto/Multimedia
   - type: containerfile
     snippets:
       - |
         RUN dnf5 -y config-manager setopt fedora-cisco-openh264.enabled=1 \
+            && if rpm -q libheif-ffmpeg >/dev/null 2>&1; then dnf5 -y remove --no-autoremove libheif-ffmpeg; fi \
             && dnf5 -y swap ffmpeg-free ffmpeg --allowerasing \
             && dnf5 -y install @multimedia --exclude=libfdk-aac,libheif-ffmpeg,PackageKit-gstreamer-plugin --setopt="install_weak_deps=False"
 
