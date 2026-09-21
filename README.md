@@ -17,9 +17,10 @@ Image: `ghcr.io/gamerx27/kinoite-x27`
 
 **Fresh machine, no OS yet:** a custom installer ISO with everything in this
 repo already baked in is built weekly (and on demand) by
-[the `build-iso` workflow](.github/workflows/iso.yml) — grab it from that
-workflow's latest run under **Actions → build-iso → Artifacts**. Flash it
-(Fedora Media Writer works) and install like any other Fedora ISO.
+[the `build-iso` workflow](.github/workflows/iso.yml) and published to the
+**[Releases page](https://github.com/GamerX27/X27-Kionite/releases/tag/iso-latest)**
+(always the current `main`, not a fixed version). Flash it (Fedora Media
+Writer works) and install like any other Fedora ISO.
 
 **Already running stock Fedora Kinoite:** rebase onto this image instead.
 (No Kinoite at all and don't want the custom ISO? [Grab the stock one here](https://fedoraproject.org/atomic-desktops/kinoite/).)

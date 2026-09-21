@@ -13,10 +13,13 @@ jobs:
     name: Build ISO
     runs-on: ubuntu-latest
     permissions:
-      contents: read
+      contents: write
       packages: read
 
     steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+
       - name: Maximize build space
         uses: ublue-os/remove-unwanted-software@v9
 
@@ -27,10 +30,16 @@ jobs:
         run: |
           sudo bluebuild generate-iso --iso-name kinoite-x27.iso image ghcr.io/gamerx27/kinoite-x27:latest
 
-      - name: Upload ISO as artifact
-        uses: actions/upload-artifact@v7
+      - name: Generate checksum
+        run: sha256sum kinoite-x27.iso > kinoite-x27.iso.sha256sum
+
+      - name: Publish to release
+        uses: softprops/action-gh-release@v3
         with:
-          name: kinoite-x27-iso
-          path: ./*.iso
-          if-no-files-found: error
-          retention-days: 60
+          tag_name: iso-latest
+          name: Latest ISO
+          make_latest: true
+          body: Rebuilt automatically from `ghcr.io/gamerx27/kinoite-x27:latest`. Always reflects the current `main` branch, not a fixed version.
+          files: |
+            kinoite-x27.iso
+            kinoite-x27.iso.sha256sum
