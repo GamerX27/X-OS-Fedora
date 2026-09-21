@@ -124,12 +124,10 @@ Everything in `x-os-fedora` above, plus:
   [Heroic Games Launcher](https://copr.fedorainfracloud.org/coprs/atim/heroic-games-launcher/)
   (both via COPR)
 - RPM Fusion free+nonfree enabled, full multimedia codecs
-  (`ffmpeg` swap, `@multimedia` group), plus RPM Fusion's "freeworld" proprietary
-  VA-API/Vulkan codec drivers (hardware H.264/HEVC/VC1/AV1 encode+decode) — see
+  (`ffmpeg` swap, `@multimedia` group), plus RPM Fusion's "freeworld" Mesa
+  VA-API/Vulkan drivers (64-bit + i686) swapped in for proprietary hardware
+  codec support (H.264/HEVC/VC1/AV1 encode+decode) — see
   **codec licensing note** below
-- Mesa rebuilt from source, restricted to AMD drivers only (radeonsi + RADV),
-  merged with the freeworld codec drivers into one build so they never
-  version-skew against each other
 - [Proton-CachyOS](https://github.com/CachyOS/proton-cachyos) auto-installs/updates
   itself into Steam's compatibility tools on first graphical login (runs as a
   `systemd --user` unit — it can't be baked into the image build itself, since
@@ -155,5 +153,4 @@ above. On an existing account, pin Steam/Konsole/Brave manually (right-click
 Pushes to `main` build and publish automatically via GitHub Actions, which
 also rebuilds weekly (Sundays) to pick up upstream Kinoite/Brave/kernel
 updates. Each weekly build stamps that date into `/etc/os-release`
-(`PRETTY_NAME`/`BUILD_ID`) so you can tell which build you're on. The gaming
-variant's Mesa rebuild is the slowest part of the matrix by a wide margin.
+(`PRETTY_NAME`/`BUILD_ID`) so you can tell which build you're on.

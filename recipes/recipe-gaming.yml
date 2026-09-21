@@ -2,57 +2,9 @@
 # yaml-language-server: $schema=https://schema.blue-build.org/recipe-v1.json
 
 name: x-os-gaming
-description: X-OS-Fedora (Gaming) - X-OS-Fedora plus Steam, Faugus, Heroic, RPM Fusion codecs, and a custom AMD-only from-source Mesa
+description: X-OS-Fedora (Gaming) - X-OS-Fedora plus Steam, Faugus, Heroic, RPM Fusion codecs, and RPM Fusion's freeworld Mesa VA-API/Vulkan drivers
 base-image: ghcr.io/blue-build/base-images/fedora-kinoite
 image-version: latest
-
-# Builds a from-source Mesa restricted to AMD drivers (radeonsi + RADV), plus RPM Fusion's
-# "freeworld" VA-API/Vulkan drivers (proprietary H.264/HEVC/VC1/AV1 hardware codec support
-# Fedora's own Mesa can't ship) built from the SAME pinned Mesa version, so the two never
-# version-skew against each other - that exact skew is a known real-world breakage:
-# github.com/coreos/rpm-ostree/issues/4592. `from: fedora:44` matches this image's own base
-# (confirmed by pulling ghcr.io/gamerx27/x-os-fedora:latest and checking /etc/os-release).
-stages:
-  - name: mesa-builder
-    from: fedora:44
-    modules:
-      - type: containerfile
-        snippets:
-          - |
-            RUN set -eux \
-                && dnf5 -y install rpm-build rpmdevtools dnf5-plugins 'dnf-command(builddep)' \
-                     'dnf-command(config-manager)' git rpm-sign \
-                && dnf5 -y config-manager setopt fedora-source.enabled=1 updates-source.enabled=1 \
-                && dnf5 -y install https://mirrors.rpmfusion.org/free/fedora/rpmfusion-free-release-$(rpm -E %fedora).noarch.rpm \
-                && dnf5 -y config-manager setopt rpmfusion-free-source.enabled=1 \
-                && dnf5 -y download --source mesa \
-                && dnf5 -y download --source mesa-freeworld \
-                && useradd -m builder \
-                && rpm -i mesa-[0-9]*.src.rpm --define "_topdir /home/builder/rpmbuild/fedora" \
-                && rpm -i mesa-freeworld-*.src.rpm --define "_topdir /home/builder/rpmbuild/freeworld" \
-                && chown -R builder:builder /home/builder/rpmbuild \
-                && dnf5 -y builddep /home/builder/rpmbuild/fedora/SPECS/mesa.spec \
-                && dnf5 -y builddep /home/builder/rpmbuild/freeworld/SPECS/mesa-freeworld.spec
-      - type: containerfile
-        snippets:
-          - |
-            RUN set -eux; \
-                FEDORA_SPEC=/home/builder/rpmbuild/fedora/SPECS/mesa.spec; \
-                FREEWORLD_SPEC=/home/builder/rpmbuild/freeworld/SPECS/mesa-freeworld.spec; \
-                MESA_VER=$(rpm -q --qf '%{VERSION}\n' --specfile "$FEDORA_SPEC" | head -1); \
-                sed -i "s/^Version:.*/Version:        ${MESA_VER}/" "$FREEWORLD_SPEC"; \
-                for SPEC in "$FEDORA_SPEC" "$FREEWORLD_SPEC"; do \
-                  sed -i \
-                    -e "s/^Release:.*/&.amdgaming1/" \
-                    -e "/-Dgallium-drivers=/s/=.*/=radeonsi,zink,llvmpipe' \\\\/" \
-                    -e "/-Dvulkan-drivers=/s/=.*/=amd' \\\\/" \
-                    "$SPEC"; \
-                done; \
-                su - builder -c "rpmbuild -bb --define '_topdir /home/builder/rpmbuild/fedora' $FEDORA_SPEC"; \
-                su - builder -c "rpmbuild -bb --define '_topdir /home/builder/rpmbuild/freeworld' $FREEWORLD_SPEC"; \
-                mkdir -p /out/fedora /out/freeworld; \
-                cp /home/builder/rpmbuild/fedora/RPMS/*/*.rpm /out/fedora/; \
-                cp /home/builder/rpmbuild/freeworld/RPMS/*/*.rpm /out/freeworld/
 
 modules:
   # Ship system-wide config files (dark theme, Konsole, shell default, NM, rpm-ostreed,
@@ -181,8 +133,8 @@ modules:
   - type: initramfs
 
   # RPM Fusion + gaming COPRs + gaming packages. Installing steam/gamescope/etc. here pulls
-  # in stock mesa-vulkan-drivers as a dependency; intentional - it gets overridden further
-  # down once the custom Mesa build (mesa-builder stage above) is ready.
+  # in stock mesa-vulkan-drivers as a dependency; intentional - it gets swapped for RPM
+  # Fusion's freeworld build further down.
   # https://copr.fedorainfracloud.org/coprs/atim/heroic-games-launcher/
   # https://copr.fedorainfracloud.org/coprs/faugus/faugus-launcher/
   - type: dnf
@@ -219,6 +171,22 @@ modules:
             && dnf5 -y swap ffmpeg-free ffmpeg --allowerasing \
             && dnf5 -y install @multimedia --setopt="install_weak_deps=False" --exclude=PackageKit-gstreamer-plugin
 
+  # RPM Fusion's freeworld Mesa VA-API/Vulkan drivers (proprietary H.264/HEVC/VC1/AV1
+  # hardware codec support Fedora's own Mesa can't ship), 64-bit + i686 - the plain package
+  # swap from rpmfusion.org/Howto/Multimedia, not a custom build. (An earlier version of
+  # this recipe tried compiling Mesa from source instead; dropped after CI hit
+  # Fedora's mesa.spec now needing dynamic Rust/cargo BuildRequires - via
+  # %generate_buildrequires - that plain rpmbuild outside mock doesn't resolve. This
+  # prebuilt swap is simpler and doesn't have that problem.)
+  - type: containerfile
+    snippets:
+      - |
+        RUN dnf5 -y install mesa-va-drivers-freeworld \
+            && dnf5 -y swap mesa-vulkan-drivers mesa-vulkan-drivers-freeworld \
+            && dnf5 -y install mesa-va-drivers-freeworld.i686 \
+            && dnf5 -y swap mesa-vulkan-drivers.i686 mesa-vulkan-drivers-freeworld.i686 \
+            && rpm -q mesa-va-drivers-freeworld mesa-vulkan-drivers-freeworld
+
   # Defensive assertion (matches this repo's existing style, e.g. the kernel-swap module
   # above) that the desktop-file IDs files/gaming's layout.js just pinned in the taskbar
   # actually exist now that steam/faugus/heroic are installed.
@@ -228,29 +196,6 @@ modules:
         RUN test -f /usr/share/applications/steam.desktop \
             && test -f /usr/share/applications/org.kde.konsole.desktop \
             && test -f /usr/share/applications/brave-origin.desktop
-
-  # Pull the custom Mesa RPMs (Fedora-based core + freeworld VA/Vulkan) from the builder stage
-  - type: copy
-    from: mesa-builder
-    src: /out
-    dest: /tmp/mesa-rpms/
-
-  # Install the custom Mesa builds LAST (relative to the stock mesa-vulkan-drivers pulled in
-  # by the gaming-packages module above) so they win. mesa-vulkan-drivers-freeworld Conflicts
-  # with stock mesa-vulkan-drivers (same rule as RPM Fusion's own
-  # `dnf swap mesa-vulkan-drivers{,-freeworld}`), so install the Fedora-based core drivers
-  # first, excluding mesa-vulkan-drivers, then swap in the freeworld Vulkan driver, then add
-  # the freeworld VA-API driver for hardware video codec support.
-  - type: containerfile
-    snippets:
-      - |
-        RUN set -eux; \
-            shopt -s extglob; \
-            dnf5 -y install /tmp/mesa-rpms/fedora/!(mesa-vulkan-drivers*).rpm --allowerasing; \
-            dnf5 -y swap mesa-vulkan-drivers /tmp/mesa-rpms/freeworld/mesa-vulkan-drivers-freeworld*.rpm --allowerasing; \
-            dnf5 -y install /tmp/mesa-rpms/freeworld/mesa-va-drivers-freeworld*.rpm --allowerasing; \
-            rpm -q mesa-dri-drivers mesa-vulkan-drivers-freeworld mesa-va-drivers-freeworld; \
-            rm -rf /tmp/mesa-rpms
 
   # X-Linuxtool (X27's interactive setup/tooling launcher) installed as a
   # standing command - https://codeberg.org/X27/X-Linuxtool. Its submenu
