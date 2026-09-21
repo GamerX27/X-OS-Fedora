@@ -189,6 +189,18 @@ modules:
   # Fedora stops shipping it by default) clears the way for libheif-freeworld's older,
   # matching libheif to take over; --exclude=libheif-ffmpeg on the group install itself is
   # kept too so nothing pulls it back in during the same transaction.
+  #
+  # pipewire-codec-aptx is excluded for a genuine (not already-installed) file conflict:
+  # Fedora's own pipewire-libs-extra now ships native aptX Bluetooth codec support (same
+  # story as libfdk-aac - the aptX patent situation cleared up and Fedora absorbed it
+  # directly), and it installs the exact same file
+  # (/usr/lib64/spa-0.2/bluez5/libspa-codec-bluez5-aptx.so) that RPM Fusion's separate
+  # pipewire-codec-aptx package - still a member of the @multimedia group - also ships.
+  # RPM Fusion hasn't added a Conflicts/Obsoletes against the new Fedora package yet, so the
+  # transaction fails at the RPM level ("file ... conflicts with file from package
+  # pipewire-libs-extra" in CI) rather than at depsolve time. Unlike libfdk-aac/libheif-ffmpeg
+  # above, pipewire-codec-aptx is an actual fresh install candidate here (pulled in by the
+  # group, not pre-installed by the base image), so a plain --exclude works.
   # https://rpmfusion.org/Howto/Multimedia
   - type: containerfile
     snippets:
@@ -196,7 +208,7 @@ modules:
         RUN dnf5 -y config-manager setopt fedora-cisco-openh264.enabled=1 \
             && if rpm -q libheif-ffmpeg >/dev/null 2>&1; then dnf5 -y remove --no-autoremove libheif-ffmpeg; fi \
             && dnf5 -y swap ffmpeg-free ffmpeg --allowerasing \
-            && dnf5 -y install @multimedia --exclude=libfdk-aac,libheif-ffmpeg,PackageKit-gstreamer-plugin --setopt="install_weak_deps=False"
+            && dnf5 -y install @multimedia --exclude=libfdk-aac,libheif-ffmpeg,pipewire-codec-aptx,PackageKit-gstreamer-plugin --setopt="install_weak_deps=False"
 
   # RPM Fusion's freeworld Mesa VA-API/Vulkan drivers (proprietary H.264/HEVC/VC1/AV1
   # hardware codec support Fedora's own Mesa can't ship), 64-bit + i686 - the plain package
