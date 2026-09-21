@@ -27,16 +27,11 @@ gaming: `ghcr.io/gamerx27/x-os-gaming`)
 
 ## Install
 
-**Fresh machine, no OS yet:** a custom installer ISO with everything in this
-repo already baked in can be built on demand from
+**Fresh machine, no OS yet:** build a custom installer ISO from
 [the `build-iso` workflow](.github/workflows/iso.yml) (Actions →
-**build-iso** → **Run workflow**). Once it finishes, grab it from
-https://archive.org/details/x-os-fedora (public, no login, permanent link —
-the same identifier is overwritten on each run) or from that run's
-**Artifacts** section (needs a GitHub login, expires after 60 days). It's not
-a GitHub Release: the ISO comes out over 2 GiB, which is GitHub's hard size
-limit per Release asset. Flash it (Fedora Media Writer works) and install
-like any other Fedora ISO.
+**build-iso** → **Run workflow**), then download it from
+https://archive.org/details/x-os-fedora or that run's **Artifacts** section.
+Flash it (Fedora Media Writer works) and install like any other Fedora ISO.
 
 **Already running stock Fedora Kinoite:** rebase onto this image instead.
 (No Kinoite at all and don't want the custom ISO? [Grab the stock one here](https://fedoraproject.org/atomic-desktops/kinoite/).)
