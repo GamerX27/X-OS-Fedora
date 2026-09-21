@@ -126,8 +126,6 @@ Everything in `x-os-fedora` above, plus:
 - RPM Fusion free+nonfree enabled, full multimedia codecs
   (`ffmpeg` swap, `@multimedia` group), plus RPM Fusion's "freeworld" Mesa
   VA-API/Vulkan drivers (64-bit + i686) swapped in for proprietary hardware
-  codec support (H.264/HEVC/VC1/AV1 encode+decode) — see
-  **codec licensing note** below
 - [Proton-CachyOS](https://github.com/CachyOS/proton-cachyos) auto-installs/updates
   itself into Steam's compatibility tools on first graphical login (runs as a
   `systemd --user` unit — it can't be baked into the image build itself, since
