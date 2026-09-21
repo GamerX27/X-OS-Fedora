@@ -2,7 +2,10 @@ name: build-iso
 on:
   workflow_dispatch:
   schedule:
-    - cron: "00 08 * * 0" # weekly, Sunday 08:00 UTC
+    # weekly, Tuesday 04:00 Norway winter time (CET, UTC+1) = 03:00 UTC.
+    # GitHub Actions cron is always UTC and doesn't shift for DST, so during
+    # Norway's summer time (CEST, UTC+2) this actually runs at 05:00 local.
+    - cron: "00 03 * * 2"
 
 concurrency:
   group: ${{ github.workflow }}

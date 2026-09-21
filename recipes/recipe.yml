@@ -53,11 +53,17 @@ modules:
   # targets. sbsigntools/mokutil are here only so you can sign the kernel
   # yourself if Secure Boot is enabled; the kernel itself ships unsigned.
   # https://copr.fedorainfracloud.org/coprs/bieszczaders/kernel-cachyos/
+  # cleanup is deliberately NOT set here (defaults to false): the copr repo
+  # must still be enabled for the containerfile module below, which is where
+  # kernel-cachyos actually gets installed. Setting cleanup: true disables the
+  # repo as soon as THIS module ends, before that later install ever runs -
+  # that's exactly what broke the first attempt ("No match for argument:
+  # kernel-cachyos"). The repo gets disabled manually at the end of that swap
+  # step instead, once the install is actually done.
   - type: dnf
     repos:
       copr:
         - bieszczaders/kernel-cachyos
-      cleanup: true
     install:
       packages:
         - sbsigntools
@@ -83,6 +89,7 @@ modules:
             && dnf5 -y install --setopt=tsflags=noscripts \
                  kernel-cachyos kernel-cachyos-devel-matched \
             && dnf5 -y install --skip-unavailable virtualbox-guest-additions \
+            && dnf5 -y copr disable bieszczaders/kernel-cachyos \
             && dnf5 clean all \
             && test "$(ls -1 /usr/lib/modules | wc -l)" -eq 1 \
             && KVER="$(ls -1 /usr/lib/modules)" \
