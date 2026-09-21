@@ -9,6 +9,17 @@ on:
       - main
   pull_request:
   workflow_dispatch:
+    inputs:
+      recipe:
+        description: "Recipe to build (all runs the full matrix)"
+        required: false
+        default: all
+        type: choice
+        options:
+          - all
+          - recipe.yml
+          - recipe-lts.yml
+          - recipe-gaming.yml
 
 jobs:
   build:
@@ -16,10 +27,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        recipe:
-          - recipe.yml
-          - recipe-lts.yml
-          - recipe-gaming.yml
+        recipe: ${{ (github.event_name == 'workflow_dispatch' && github.event.inputs.recipe != 'all') && fromJSON(format('["{0}"]', github.event.inputs.recipe)) || fromJSON('["recipe.yml","recipe-lts.yml","recipe-gaming.yml"]') }}
     runs-on: ubuntu-24.04
     permissions:
       contents: read
