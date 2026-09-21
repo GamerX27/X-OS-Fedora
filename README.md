@@ -1,82 +1,59 @@
 # X-OS-Fedora
 
 Custom Fedora Kinoite, built with [BlueBuild](https://blue-build.org/).
-Recipe: [`recipes/recipe.yml`](recipes/recipe.yml) (also
-[`recipes/recipe-lts.yml`](recipes/recipe-lts.yml) for the LTS-kernel variant, and
-[`recipes/recipe-gaming.yml`](recipes/recipe-gaming.yml) for the gaming/AMD variant)
-Image: `ghcr.io/gamerx27/x-os-fedora` (LTS: `ghcr.io/gamerx27/x-os-fedora-lts`,
-gaming: `ghcr.io/gamerx27/x-os-gaming`)
+
+- Base: `ghcr.io/gamerx27/x-os-fedora` — [recipe.yml](recipes/recipe.yml)
+- LTS kernel: `ghcr.io/gamerx27/x-os-fedora-lts` — [recipe-lts.yml](recipes/recipe-lts.yml)
+- Gaming: `ghcr.io/gamerx27/x-os-gaming` — [recipe-gaming.yml](recipes/recipe-gaming.yml)
 
 ## What's in it
 
-- Brave Origin (native package, set as default browser), debranded/hardened
-  further at build time ([make_brave_great_again.sh](https://codeberg.org/X27/X-Linuxtool/src/branch/main/Desktop/Linux-Desktop/Browser/make_brave_great_again.sh))
-- [X-Linuxtool](https://codeberg.org/X27/X-Linuxtool) installed as `x-linuxtool`
+- Brave (default browser), debranded with [X-Linuxtool](https://codeberg.org/X27/X-Linuxtool)
 - Removed: Firefox, KHelpCenter, Discover
-- Dark theme, Papirus-Dark icons, Konsole on Fish, Fish as default shell,
-  fastfetch banner on new interactive shells
+- Dark theme, Papirus icons, Fish shell, Konsole on Fish, fastfetch banner
 - fastfetch, htop, nvtop, nano, pciutils, lm_sensors, topgrade
-- VLC (system-wide Flatpak from Flathub, installed/kept up to date automatically)
-- NetworkManager connectivity check off, `NetworkManager-config-connectivity-fedora` removed
-- Auto-updates off — `bootc-fetch-apply-updates.timer` is masked; a weekly
-  desktop notification reminds you to run `topgrade` instead (see below)
-- `LC_TIME=C.UTF-8`, Plymouth pinned to Fedora's `bgrt` boot theme
-- CachyOS kernel (BORE scheduler) instead of stock Fedora — see caveats below
-  (an LTS-kernel variant is also published, see below)
-- `/etc/os-release` stamped with the build date each week
+- VLC (Flatpak)
+- CachyOS kernel (BORE scheduler); LTS variant published separately
+- Auto-updates off — update manually with `topgrade`
+- `/etc/os-release` stamped with the build date
 
 ## Install
 
-**Fresh machine, no OS yet:** build a custom installer ISO from
-[the `build-iso` workflow](.github/workflows/iso.yml) (Actions →
-**build-iso** → **Run workflow**), then download it from
-https://archive.org/details/x-os-fedora or that run's **Artifacts** section.
-Flash it (Fedora Media Writer works) and install like any other Fedora ISO.
+**Fresh machine:** build an ISO from the `build-iso` GitHub Action (Actions →
+build-iso → Run workflow), then download it from
+[archive.org](https://archive.org/details/x-os-fedora) or that run's
+Artifacts. Flash it with Fedora Media Writer and install normally.
 
-**Already running stock Fedora Kinoite:** rebase onto this image instead.
-(No Kinoite at all and don't want the custom ISO? [Grab the stock one here](https://fedoraproject.org/atomic-desktops/kinoite/).)
+**Already on Fedora Kinoite:** rebase onto this image.
 
 ```
 sudo rpm-ostree rebase ostree-unverified-registry:ghcr.io/gamerx27/x-os-fedora:latest
 systemctl reboot
 ```
 
-Then switch to verified pulls (key's already in the image, nothing to set up):
+Then switch to verified pulls:
 
 ```
 sudo rpm-ostree rebase ostree-image-signed:docker://ghcr.io/gamerx27/x-os-fedora:latest
 systemctl reboot
 ```
 
-**Want the LTS kernel instead of CachyOS's rolling one?** Use
-`x-os-fedora-lts` in place of `x-os-fedora` in the commands above.
-
-**Want the gaming/AMD variant?** Use `x-os-gaming` in place of `x-os-fedora` —
-see [Gaming variant](#gaming-variant-x-os-gaming) below for what it adds and
-its own caveats.
+Swap `x-os-fedora` for `x-os-fedora-lts` (LTS kernel) or `x-os-gaming`
+(Steam/gaming, see below) in the commands above.
 
 ## Update
-
-Auto-updates are off. Run this yourself (a desktop notification reminds you
-weekly):
 
 ```
 topgrade
 ```
 
-`topgrade` updates the system image (via `rpm-ostree`/`bootc`), Flatpaks, and
-more, all in one command. To update just the system image and reboot:
+Updates the system image, Flatpaks, and everything else in one command.
+Nothing updates on its own — you always run this yourself.
 
-```
-sudo rpm-ostree upgrade
-systemctl reboot
-```
+## First login after rebasing
 
-## If you rebased an existing install
-
-Theme/icons/shell/Konsole won't apply to your account automatically — only to
-new ones. Run once, **as yourself, no `sudo`** (sudo writes to root's config,
-not yours):
+Theme, icons, shell, and Konsole only apply to new accounts. Run once as
+yourself, no `sudo`:
 
 ```
 plasma-apply-lookandfeel -a org.kde.breezedark.desktop
@@ -85,58 +62,40 @@ chsh -s /usr/bin/fish "$USER"
 kquitapp6 plasmashell; kstart plasmashell >/dev/null 2>&1 &
 ```
 
-`chsh` asks for **your own login password**, not root's — that's normal.
-Then log out and back in: the shell change needs a new session, and Konsole
-needs to be relaunched to pick up the profile.
+Log out and back in afterward for the shell change to take effect.
 
-Old Anaconda-installed KDE games may still be around:
+Remove leftover Anaconda KDE games if you have them:
 
 ```
 sudo flatpak remove --noninteractive org.kde.elisa org.kde.kmahjongg org.kde.kolourpaint org.kde.kmines
 sudo flatpak remote-modify --disable fedora fedora-testing
 ```
 
-## Kernel caveats
+## Kernel
 
-`x-os-fedora` ships the [CachyOS kernel](https://copr.fedorainfracloud.org/coprs/bieszczaders/kernel-cachyos/)
-(BORE scheduler); `x-os-fedora-lts` ships the
-CachyOS LTS kernel (the `kernel-cachyos-lts` package in the same
-[kernel-cachyos copr](https://copr.fedorainfracloud.org/coprs/bieszczaders/kernel-cachyos/))
-instead — same vendor/copr, a longterm-stable upstream kernel rather than the
-rolling one. Both instead of stock Fedora's kernel.
+`x-os-fedora` and `x-os-gaming` ship the
+[CachyOS kernel](https://copr.fedorainfracloud.org/coprs/bieszczaders/kernel-cachyos/)
+(BORE scheduler); `x-os-fedora-lts` ships its LTS variant instead. Both
+replace the stock Fedora kernel.
 
-- **CPU must support x86_64-v3** (any Zen-family AMD, Haswell+ Intel), for
-  either variant. Installing on an unsupported CPU produces an unbootable
-  system. Check with:
+- **Needs an x86_64-v3 CPU** (Zen-family AMD, Haswell+ Intel). Older CPUs
+  won't boot it. Check with:
   `/lib64/ld-linux-x86-64.so.2 --help | grep "(supported, searched)"`
-- **Unsigned.** If Secure Boot is on, either turn it off or sign the kernel
-  yourself with `sbsigntools`/`mokutil` (both included in the image) — see the
-  copr page's Secure Boot instructions.
+- **Unsigned.** Turn off Secure Boot, or sign it yourself with
+  `sbsigntools`/`mokutil` (both included).
 
-## Gaming variant (`x-os-gaming`)
+## Gaming variant
 
-Everything in `x-os-fedora` above, plus:
+Everything above, plus:
 
 - Steam, GameMode, Gamescope, MangoHud, GOverlay
-- [Faugus Launcher](https://copr.fedorainfracloud.org/coprs/faugus/faugus-launcher/) and
-  [Heroic Games Launcher](https://copr.fedorainfracloud.org/coprs/atim/heroic-games-launcher/)
-  (both via COPR)
-- RPM Fusion free+nonfree enabled, full multimedia codecs
-  (`ffmpeg` swap, `@multimedia` group), plus RPM Fusion's "freeworld" Mesa
-  VA-API/Vulkan drivers (64-bit + i686) swapped in for proprietary hardware
-- [Proton-CachyOS](https://github.com/CachyOS/proton-cachyos) installer available as
-  `proton-cachyos-install` — run it yourself (as your normal user, not root; it
-  refuses to run as root) whenever you want to install or update it into Steam's
-  compatibility tools:
-  ```
-  proton-cachyos-install
-  ```
-- Steam, Konsole, and Brave pinned as the only default taskbar launchers
-  (**new accounts only** — see caveat below)
+- Faugus Launcher, Heroic Games Launcher
+- RPM Fusion codecs and freeworld Mesa VA-API/Vulkan drivers
+- `proton-cachyos-install` — run it yourself to install or update
+  [Proton-CachyOS](https://github.com/CachyOS/proton-cachyos) into Steam
+- Steam, Konsole, and Brave pinned to the taskbar (new accounts only)
 
 ## Build
 
 Pushes to `main` build and publish automatically via GitHub Actions, which
-also rebuilds weekly (Sundays) to pick up upstream Kinoite/Brave/kernel
-updates. Each weekly build stamps that date into `/etc/os-release`
-(`PRETTY_NAME`/`BUILD_ID`) so you can tell which build you're on.
+also rebuilds weekly to pick up upstream Kinoite/Brave/kernel updates.
