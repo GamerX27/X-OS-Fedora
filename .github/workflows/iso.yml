@@ -26,10 +26,10 @@ jobs:
 
       - name: Generate ISO
         run: |
-          sudo bluebuild generate-iso --iso-name kinoite-x27.iso image ghcr.io/gamerx27/kinoite-x27:latest
+          sudo bluebuild generate-iso --iso-name x-os-fedora.iso image ghcr.io/gamerx27/x-os-fedora:latest
 
       - name: Generate checksum
-        run: sha256sum kinoite-x27.iso > kinoite-x27.iso.sha256sum
+        run: sha256sum x-os-fedora.iso > x-os-fedora.iso.sha256sum
 
       # NOTE: this is not a GitHub Release. The ISO comes out over 2 GiB,
       # GitHub's hard per-asset size limit for Releases - uploading it there
@@ -39,9 +39,9 @@ jobs:
       - name: Upload ISO as artifact
         uses: actions/upload-artifact@v7
         with:
-          name: kinoite-x27-iso
+          name: x-os-fedora-iso
           path: |
-            kinoite-x27.iso
-            kinoite-x27.iso.sha256sum
+            x-os-fedora.iso
+            x-os-fedora.iso.sha256sum
           if-no-files-found: error
           retention-days: 60

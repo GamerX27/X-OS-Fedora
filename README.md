@@ -1,9 +1,9 @@
-# kinoite-x27
+# X-OS-Fedora
 
 Custom Fedora Kinoite, built with [BlueBuild](https://blue-build.org/).
 Recipe: [`recipes/recipe.yml`](recipes/recipe.yml) (also
 [`recipes/recipe-lts.yml`](recipes/recipe-lts.yml) for the LTS-kernel variant)
-Image: `ghcr.io/gamerx27/kinoite-x27` (LTS: `ghcr.io/gamerx27/kinoite-x27-lts`)
+Image: `ghcr.io/gamerx27/x-os-fedora` (LTS: `ghcr.io/gamerx27/x-os-fedora-lts`)
 
 ## What's in it
 
@@ -37,19 +37,19 @@ works) and install like any other Fedora ISO.
 (No Kinoite at all and don't want the custom ISO? [Grab the stock one here](https://fedoraproject.org/atomic-desktops/kinoite/).)
 
 ```
-sudo rpm-ostree rebase ostree-unverified-registry:ghcr.io/gamerx27/kinoite-x27:latest
+sudo rpm-ostree rebase ostree-unverified-registry:ghcr.io/gamerx27/x-os-fedora:latest
 systemctl reboot
 ```
 
 Then switch to verified pulls (key's already in the image, nothing to set up):
 
 ```
-sudo rpm-ostree rebase ostree-image-signed:docker://ghcr.io/gamerx27/kinoite-x27:latest
+sudo rpm-ostree rebase ostree-image-signed:docker://ghcr.io/gamerx27/x-os-fedora:latest
 systemctl reboot
 ```
 
 **Want the LTS kernel instead of CachyOS's rolling one?** Use
-`kinoite-x27-lts` in place of `kinoite-x27` in the commands above.
+`x-os-fedora-lts` in place of `x-os-fedora` in the commands above.
 
 ## Update
 
@@ -94,8 +94,8 @@ sudo flatpak remote-modify --disable fedora fedora-testing
 
 ## Kernel caveats
 
-`kinoite-x27` ships the [CachyOS kernel](https://copr.fedorainfracloud.org/coprs/bieszczaders/kernel-cachyos/)
-(BORE scheduler); `kinoite-x27-lts` ships the
+`x-os-fedora` ships the [CachyOS kernel](https://copr.fedorainfracloud.org/coprs/bieszczaders/kernel-cachyos/)
+(BORE scheduler); `x-os-fedora-lts` ships the
 CachyOS LTS kernel (the `kernel-cachyos-lts` package in the same
 [kernel-cachyos copr](https://copr.fedorainfracloud.org/coprs/bieszczaders/kernel-cachyos/))
 instead — same vendor/copr, a longterm-stable upstream kernel rather than the

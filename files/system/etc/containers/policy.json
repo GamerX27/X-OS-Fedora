@@ -6,10 +6,19 @@
   ],
   "transports": {
     "docker": {
-      "ghcr.io/gamerx27/kinoite-x27": [
+      "ghcr.io/gamerx27/x-os-fedora": [
         {
           "type": "sigstoreSigned",
-          "keyPath": "/etc/pki/containers/kinoite-x27.pub",
+          "keyPath": "/etc/pki/containers/x-os-fedora.pub",
+          "signedIdentity": {
+            "type": "matchRepository"
+          }
+        }
+      ],
+      "ghcr.io/gamerx27/x-os-fedora-lts": [
+        {
+          "type": "sigstoreSigned",
+          "keyPath": "/etc/pki/containers/x-os-fedora.pub",
           "signedIdentity": {
             "type": "matchRepository"
           }

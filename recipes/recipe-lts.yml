@@ -1,8 +1,8 @@
 ---
 # yaml-language-server: $schema=https://schema.blue-build.org/recipe-v1.json
 
-name: kinoite-x27-lts
-description: Custom Fedora Kinoite with X27 config, KDE tweaks, Brave Origin, and the CachyOS LTS kernel
+name: x-os-fedora-lts
+description: X-OS-Fedora (LTS kernel) - custom Fedora Kinoite with X27 config, KDE tweaks, Brave Origin, and the CachyOS LTS kernel
 base-image: ghcr.io/blue-build/base-images/fedora-kinoite
 image-version: latest
 
@@ -197,7 +197,7 @@ modules:
         RUN plymouth-set-default-theme -R bgrt
       - |
         RUN BUILD_DATE="$(date -u +%Y-%m-%d)" \
-            && sed -i "s|^PRETTY_NAME=.*|PRETTY_NAME=\"Fedora Kinoite (kinoite-x27-lts, build ${BUILD_DATE})\"|" /etc/os-release \
+            && sed -i "s|^PRETTY_NAME=.*|PRETTY_NAME=\"Fedora Kinoite (x-os-fedora-lts, build ${BUILD_DATE})\"|" /etc/os-release \
             && echo "BUILD_ID=\"${BUILD_DATE}\"" >> /etc/os-release
 
   - type: signing
