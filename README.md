@@ -135,19 +135,6 @@ Everything in `x-os-fedora` above, plus:
 - Steam, Konsole, and Brave pinned as the only default taskbar launchers
   (**new accounts only** — see caveat below)
 
-**Codec licensing note:** the freeworld VA-API/Vulkan drivers bundle
-patent-encumbered H.264/HEVC/VC1 codec binaries. This is the same category of
-exposure RPM Fusion itself manages by hosting outside the US. Be aware of
-that before relying on or redistributing this image in a jurisdiction where
-software patents on these codecs are enforced.
-
-**Taskbar pin and Proton-CachyOS only apply to new accounts / first login** —
-same caveat as the theme/Konsole/shell defaults under
-[If you rebased an existing install](#if-you-rebased-an-existing-install)
-above. On an existing account, pin Steam/Konsole/Brave manually (right-click
-→ Pin to Task Manager) and run
-`/usr/libexec/x-os-gaming/proton-cachyos-installer.sh` yourself once.
-
 ## Build
 
 Pushes to `main` build and publish automatically via GitHub Actions, which
