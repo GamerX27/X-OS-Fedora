@@ -1,0 +1,10 @@
+[Unit]
+Description=Remind to run topgrade
+
+[Service]
+Type=oneshot
+ExecStart=/usr/bin/notify-send \
+    --app-name=topgrade \
+    --icon=software-update-available \
+    "Time to update" \
+    "Run 'topgrade' in a terminal to update the system image, Flatpaks, and more."

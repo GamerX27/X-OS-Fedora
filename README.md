@@ -1,17 +1,26 @@
 # kinoite-x27
 
 Custom Fedora Kinoite, built with [BlueBuild](https://blue-build.org/).
-Recipe: [`recipes/recipe.yml`](recipes/recipe.yml)
-Image: `ghcr.io/gamerx27/kinoite-x27`
+Recipe: [`recipes/recipe.yml`](recipes/recipe.yml) (also
+[`recipes/recipe-lts.yml`](recipes/recipe-lts.yml) for the LTS-kernel variant)
+Image: `ghcr.io/gamerx27/kinoite-x27` (LTS: `ghcr.io/gamerx27/kinoite-x27-lts`)
 
 ## What's in it
 
-- Brave Origin (native package, set as default browser)
+- Brave Origin (native package, set as default browser), debranded/hardened
+  further at build time ([make_brave_great_again.sh](https://codeberg.org/X27/X-Linuxtool/src/branch/main/Desktop/Linux-Desktop/Browser/make_brave_great_again.sh))
+- [X-Linuxtool](https://codeberg.org/X27/X-Linuxtool) installed as `x-linuxtool`
 - Removed: Firefox, KHelpCenter, Discover
-- Dark theme, Papirus-Dark icons, Konsole on Fish, Fish as default shell
-- fastfetch, htop, nvtop, nano, pciutils, lm_sensors
-- NetworkManager connectivity check off, auto-updates on
+- Dark theme, Papirus-Dark icons, Konsole on Fish, Fish as default shell,
+  fastfetch banner on new interactive shells
+- fastfetch, htop, nvtop, nano, pciutils, lm_sensors, topgrade
+- NetworkManager connectivity check off, `NetworkManager-config-connectivity-fedora` removed
+- Auto-updates off — `bootc-fetch-apply-updates.timer` is masked; a weekly
+  desktop notification reminds you to run `topgrade` instead (see below)
+- `LC_TIME=C.UTF-8`, Plymouth pinned to Fedora's `bgrt` boot theme
 - CachyOS kernel (BORE scheduler) instead of stock Fedora — see caveats below
+  (an LTS-kernel variant is also published, see below)
+- `/etc/os-release` stamped with the build date each week
 
 ## Install
 
@@ -39,14 +48,25 @@ sudo rpm-ostree rebase ostree-image-signed:docker://ghcr.io/gamerx27/kinoite-x27
 systemctl reboot
 ```
 
+**Want the LTS kernel instead of CachyOS's rolling one?** Use
+`kinoite-x27-lts` in place of `kinoite-x27` in the commands above.
+
 ## Update
+
+Auto-updates are off. Run this yourself (a desktop notification reminds you
+weekly):
+
+```
+topgrade
+```
+
+`topgrade` updates the system image (via `rpm-ostree`/`bootc`), Flatpaks, and
+more, all in one command. To update just the system image and reboot:
 
 ```
 sudo rpm-ostree upgrade
 systemctl reboot
 ```
-
-(also happens automatically in the background)
 
 ## If you rebased an existing install
 
@@ -74,11 +94,15 @@ sudo flatpak remote-modify --disable fedora fedora-testing
 
 ## Kernel caveats
 
-This image ships the [CachyOS kernel](https://copr.fedorainfracloud.org/coprs/bieszczaders/kernel-cachyos/)
-instead of stock Fedora's.
+`kinoite-x27` ships the [CachyOS kernel](https://copr.fedorainfracloud.org/coprs/bieszczaders/kernel-cachyos/)
+(BORE scheduler); `kinoite-x27-lts` ships the
+[CachyOS LTS kernel](https://copr.fedorainfracloud.org/coprs/bieszczaders/kernel-cachyos-lts/)
+instead — same vendor, a longterm-stable upstream kernel rather than the
+rolling one. Both instead of stock Fedora's kernel.
 
-- **CPU must support x86_64-v3** (any Zen-family AMD, Haswell+ Intel). Installing
-  on an unsupported CPU produces an unbootable system. Check with:
+- **CPU must support x86_64-v3** (any Zen-family AMD, Haswell+ Intel), for
+  either variant. Installing on an unsupported CPU produces an unbootable
+  system. Check with:
   `/lib64/ld-linux-x86-64.so.2 --help | grep "(supported, searched)"`
 - **Unsigned.** If Secure Boot is on, either turn it off or sign the kernel
   yourself with `sbsigntools`/`mokutil` (both included in the image) — see the
@@ -86,4 +110,7 @@ instead of stock Fedora's.
 
 ## Build
 
-Pushes to `main` build and publish automatically via GitHub Actions.
+Pushes to `main` build and publish automatically via GitHub Actions, which
+also rebuilds weekly (Sundays) to pick up upstream Kinoite/Brave/kernel
+updates. Each weekly build stamps that date into `/etc/os-release`
+(`PRETTY_NAME`/`BUILD_ID`) so you can tell which build you're on.

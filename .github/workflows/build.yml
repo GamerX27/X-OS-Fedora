@@ -1,7 +1,7 @@
 name: build
 on:
   schedule:
-    - cron: "00 17 * * *" # rebuild every day at 5:00 PM UTC to pick up upstream Kinoite/Brave updates
+    - cron: "00 17 * * 0" # rebuild weekly, Sundays at 5:00 PM UTC, to pick up upstream Kinoite/Brave updates
   push:
     paths-ignore:
       - "**.md"
@@ -18,6 +18,7 @@ jobs:
       matrix:
         recipe:
           - recipe.yml
+          - recipe-lts.yml
     runs-on: ubuntu-24.04
     permissions:
       contents: read
@@ -26,6 +27,10 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v5
+
+      - name: Stamp build date into recipe
+        run: |
+          sed -i "s/\$BUILD_DATE/$(date -u +%Y-%m-%d)/g" "recipes/${{ matrix.recipe }}"
 
       - name: Build custom image
         uses: blue-build/github-action@v1.10
