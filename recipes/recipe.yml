@@ -42,23 +42,56 @@ modules:
         - plasma-discover
         - plasma-discover-notifier
 
-  - type: default-flatpaks
-    configurations:
-      - scope: system
-        notify: true
-        repo:
-          title: Flathub (system)
-        install:
-          - org.videolan.VLC
-          - org.jellyfin.JellyfinDesktop
-          - org.localsend.localsend_app
-          - io.github.kolunmi.Bazaar
-          - com.unicornsonlsd.finamp
-
   # Automatic updates are already handled by bootc-fetch-apply-updates.timer,
   # which is enabled by default on this base image; the classic
   # rpm-ostreed-automatic.timer is intentionally masked on bootc images, so
   # there's nothing to enable here. /etc/rpm-ostreed.conf still sets
   # AutomaticUpdatePolicy=stage for any manual `rpm-ostree upgrade` runs.
+
+  # CachyOS kernel (BORE scheduler). Requires an x86_64-v3 CPU (any Zen-family
+  # AMD, Haswell+ Intel) - confirmed fine for the 5900X/3700X this image
+  # targets. sbsigntools/mokutil are here only so you can sign the kernel
+  # yourself if Secure Boot is enabled; the kernel itself ships unsigned.
+  # https://copr.fedorainfracloud.org/coprs/bieszczaders/kernel-cachyos/
+  - type: dnf
+    repos:
+      copr:
+        - bieszczaders/kernel-cachyos
+      cleanup: true
+    install:
+      packages:
+        - sbsigntools
+        - mokutil
+
+  # The swap itself can't be plain dnf install/remove: kernel-cachyos
+  # Provides: kernel, so removing "kernel" after installing it would take the
+  # new kernel right back out - remove the stock kernel first, then install.
+  # tsflags=noscripts skips kernel-cachyos's %posttrans (it runs
+  # kernel-install/dracut, which fails in a container build since nothing has
+  # run depmod yet); depmod is run manually instead. virtualbox-guest-additions
+  # is reinstalled afterward since it Requires: kernel and gets removed as a
+  # side effect of removing kernel-core.
+  - type: containerfile
+    snippets:
+      - |
+        RUN set -eu \
+            && STOCK_KVER="$(rpm -q --queryformat '%{VERSION}-%{RELEASE}.%{ARCH}\n' kernel-core | tail -n1)" \
+            && echo "Removing Fedora kernel ${STOCK_KVER}" \
+            && dnf5 -y remove --no-autoremove \
+                 kernel kernel-core kernel-modules kernel-modules-core kernel-modules-extra \
+            && rm -rf "/usr/lib/modules/${STOCK_KVER}" \
+            && dnf5 -y install --setopt=tsflags=noscripts \
+                 kernel-cachyos kernel-cachyos-devel-matched \
+            && dnf5 -y install --skip-unavailable virtualbox-guest-additions \
+            && dnf5 clean all \
+            && test "$(ls -1 /usr/lib/modules | wc -l)" -eq 1 \
+            && KVER="$(ls -1 /usr/lib/modules)" \
+            && test -f "/usr/lib/modules/${KVER}/vmlinuz" \
+            && depmod -a "${KVER}" \
+            && test -f "/usr/lib/modules/${KVER}/modules.dep" \
+            && echo "Kernel now: ${KVER}"
+
+  # Regenerates initramfs to pick up the kernel swap above. Must run after it.
+  - type: initramfs
 
   - type: signing

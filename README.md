@@ -10,8 +10,8 @@ Image: `ghcr.io/gamerx27/kinoite-x27`
 - Removed: Firefox, KHelpCenter, Discover
 - Dark theme, Papirus-Dark icons, Konsole on Fish, Fish as default shell
 - fastfetch, htop, nvtop, nano, pciutils, lm_sensors
-- Flatpaks: VLC, Jellyfin, LocalSend, Bazaar, Finamp
 - NetworkManager connectivity check off, auto-updates on
+- CachyOS kernel (BORE scheduler) instead of stock Fedora — see caveats below
 
 ## Install
 
@@ -68,6 +68,18 @@ Old Anaconda-installed KDE games may still be around:
 sudo flatpak remove --noninteractive org.kde.elisa org.kde.kmahjongg org.kde.kolourpaint org.kde.kmines
 sudo flatpak remote-modify --disable fedora fedora-testing
 ```
+
+## Kernel caveats
+
+This image ships the [CachyOS kernel](https://copr.fedorainfracloud.org/coprs/bieszczaders/kernel-cachyos/)
+instead of stock Fedora's.
+
+- **CPU must support x86_64-v3** (any Zen-family AMD, Haswell+ Intel). Installing
+  on an unsupported CPU produces an unbootable system. Check with:
+  `/lib64/ld-linux-x86-64.so.2 --help | grep "(supported, searched)"`
+- **Unsigned.** If Secure Boot is on, either turn it off or sign the kernel
+  yourself with `sbsigntools`/`mokutil` (both included in the image) — see the
+  copr page's Secure Boot instructions.
 
 ## Build
 
