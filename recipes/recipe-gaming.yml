@@ -176,13 +176,21 @@ modules:
 
   # RPM Fusion multimedia codecs (ffmpeg swap, @multimedia group). Same libfdk-aac exclusion
   # as above, for the same reason - @multimedia can pull the same nonfree AAC codec.
+  #
+  # libheif-ffmpeg is excluded for a similar version-skew reason: Fedora's `updates` repo
+  # already ships libheif-ffmpeg (pinning libheif to its newer version) before this module
+  # runs, but RPM Fusion's libheif-freeworld (the nonfree HEIF/AVIF codec @multimedia pulls
+  # in) is hard-pinned to the older libheif version it was built against and hasn't caught up
+  # yet, so the group install can't satisfy both at once ("Problem: conflicting requests" in
+  # CI). Excluding libheif-ffmpeg lets libheif-freeworld's older, matching libheif stay in
+  # place instead.
   # https://rpmfusion.org/Howto/Multimedia
   - type: containerfile
     snippets:
       - |
         RUN dnf5 -y config-manager setopt fedora-cisco-openh264.enabled=1 \
             && dnf5 -y swap ffmpeg-free ffmpeg --allowerasing \
-            && dnf5 -y install @multimedia --exclude=libfdk-aac,PackageKit-gstreamer-plugin --setopt="install_weak_deps=False"
+            && dnf5 -y install @multimedia --exclude=libfdk-aac,libheif-ffmpeg,PackageKit-gstreamer-plugin --setopt="install_weak_deps=False"
 
   # RPM Fusion's freeworld Mesa VA-API/Vulkan drivers (proprietary H.264/HEVC/VC1/AV1
   # hardware codec support Fedora's own Mesa can't ship), 64-bit + i686 - the plain package
