@@ -42,3 +42,18 @@ jobs:
             x-os-fedora.iso.sha256sum
           if-no-files-found: error
           retention-days: 60
+
+      # Public, permanent, no-login mirror. Re-running this uploads over the same
+      # archive.org item (identifier stays fixed), so the download link never changes.
+      - name: Upload ISO to Internet Archive
+        if: ${{ secrets.IA_ACCESS_KEY != '' && secrets.IA_SECRET_KEY != '' }}
+        env:
+          IAS3_ACCESS_KEY: ${{ secrets.IA_ACCESS_KEY }}
+          IAS3_SECRET_KEY: ${{ secrets.IA_SECRET_KEY }}
+        run: |
+          pip install --quiet internetarchive
+          ia upload x-os-fedora x-os-fedora.iso x-os-fedora.iso.sha256sum \
+            --metadata="title:X-OS-Fedora Installer ISO" \
+            --metadata="mediatype:software" \
+            --metadata="collection:open_source_software" \
+            --metadata="description:Custom Fedora Kinoite installer ISO, built with BlueBuild. https://github.com/GamerX27/X-OS-Fedora"
