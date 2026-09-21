@@ -133,18 +133,28 @@ modules:
   - type: initramfs
 
   # RPM Fusion + gaming COPRs + gaming packages. A plain `type: dnf` module here (repos +
-  # install together, like the base-packages module above) hit a real RPM Fusion multilib
-  # packaging bug in CI: the moment anything in the transaction touches pipewire (gamescope,
-  # steam all need it), the solver prefers upgrading 64-bit libfdk-aac to the RPM Fusion
-  # nonfree build, whose Obsoletes carries a higher epoch than the available fdk-aac.i686 -
-  # so ANY epoch-0 fdk-aac.i686 looks "older" regardless of its actual release number, making
-  # it permanently unselectable and breaking steam.i686's pipewire-alsa(x86-32) requirement
-  # ("Failed to resolve the transaction" / "conflicting requests" in CI). We don't need
-  # proprietary FDK-AAC *encoding* quality here (hardware video codec support already comes
-  # from the freeworld Mesa VA-API drivers below), so `--exclude=libfdk-aac` sidesteps the
-  # whole bug by keeping the patent-safe fdk-aac-free build on both arches. Needs a
-  # containerfile RUN instead of the declarative dnf module since that module has no
-  # exclude option; COPRs are enabled/disabled by hand here for the same reason.
+  # install together, like the base-packages module above) hit a real conflict in CI: Fedora's
+  # own `updates` repo now ships a unified `libfdk-aac` (epoch 1) that Obsoletes both
+  # `fdk-aac`/`fdk-aac-free`, x86_64-only, and it's already installed on the base image by the
+  # time this module runs (it rides in through the base image's own Fedora updates, not
+  # through anything this recipe installs). Because Obsoletes isn't arch-scoped, that
+  # already-installed 64-bit package blocks installing `fdk-aac`/`fdk-aac-free` for i686 too -
+  # and no i686 build of `libfdk-aac` itself exists - so steam.i686's
+  # pipewire-alsa(x86-32) -> pipewire-libs(x86-32) -> libfdk-aac.so.2 chain can never resolve
+  # ("Failed to resolve the transaction" / "conflicting requests" in CI). A plain
+  # `--exclude=libfdk-aac` on the steam install (tried first) doesn't help: libfdk-aac isn't a
+  # candidate in that transaction, it's already installed by an earlier layer, so excluding it
+  # is a no-op. The actual fix is to swap the already-installed libfdk-aac back out for
+  # fdk-aac-free (patent-safe; we don't need proprietary FDK-AAC *encoding* quality here -
+  # hardware video codec support already comes from the freeworld Mesa VA-API drivers below)
+  # on x86_64, then explicitly add the i686 build, before steam ever gets a chance to pull in
+  # pipewire's i686 deps. Since this can recur on every weekly rebuild for as long as Fedora
+  # keeps shipping libfdk-aac in updates, the swap is guarded by `rpm -q` (a no-op once/if
+  # Fedora stops shipping libfdk-aac by default) rather than being a one-time fixup. `dnf5
+  # swap` has no --exclude/--skip-unavailable options, hence the separate guard rather than
+  # folding it into the swap call itself. Needs a containerfile RUN instead of the declarative
+  # dnf module since that module has no swap/exclude options; COPRs are enabled/disabled by
+  # hand here for the same reason.
   # https://copr.fedorainfracloud.org/coprs/atim/heroic-games-launcher/
   # https://copr.fedorainfracloud.org/coprs/faugus/faugus-launcher/
   - type: containerfile
@@ -153,6 +163,8 @@ modules:
         RUN dnf5 -y install \
               https://mirrors.rpmfusion.org/free/fedora/rpmfusion-free-release-$(rpm -E %fedora).noarch.rpm \
               https://mirrors.rpmfusion.org/nonfree/fedora/rpmfusion-nonfree-release-$(rpm -E %fedora).noarch.rpm \
+            && if rpm -q libfdk-aac >/dev/null 2>&1; then dnf5 -y swap libfdk-aac fdk-aac-free; fi \
+            && dnf5 -y install --skip-unavailable --exclude=libfdk-aac fdk-aac-free.i686 \
             && dnf5 -y copr enable atim/heroic-games-launcher \
             && dnf5 -y copr enable faugus/faugus-launcher \
             && dnf5 -y install --skip-unavailable --exclude=libfdk-aac \
@@ -164,13 +176,39 @@ modules:
 
   # RPM Fusion multimedia codecs (ffmpeg swap, @multimedia group). Same libfdk-aac exclusion
   # as above, for the same reason - @multimedia can pull the same nonfree AAC codec.
+  #
+  # libheif-ffmpeg hits the same already-installed trap as libfdk-aac above (confirmed by a
+  # failed CI run that only excluded it): Fedora's `updates` repo already ships
+  # libheif-ffmpeg, pinning `libheif` to its newer version, before this module ever runs -
+  # so it isn't a candidate in this transaction and `--exclude=libheif-ffmpeg` alone is a
+  # no-op. RPM Fusion's libheif-freeworld (the nonfree HEIF/AVIF codec @multimedia pulls in)
+  # is hard-pinned to the older libheif version it was built against and hasn't caught up
+  # yet, so with libheif-ffmpeg still installed the group install can't swap libheif at all
+  # ("Problem: conflicting requests" / "requires libheif.so.1 ... none of the providers can
+  # be installed" in CI). Removing libheif-ffmpeg first (guarded by rpm -q, a no-op once/if
+  # Fedora stops shipping it by default) clears the way for libheif-freeworld's older,
+  # matching libheif to take over; --exclude=libheif-ffmpeg on the group install itself is
+  # kept too so nothing pulls it back in during the same transaction.
+  #
+  # pipewire-codec-aptx is excluded for a genuine (not already-installed) file conflict:
+  # Fedora's own pipewire-libs-extra now ships native aptX Bluetooth codec support (same
+  # story as libfdk-aac - the aptX patent situation cleared up and Fedora absorbed it
+  # directly), and it installs the exact same file
+  # (/usr/lib64/spa-0.2/bluez5/libspa-codec-bluez5-aptx.so) that RPM Fusion's separate
+  # pipewire-codec-aptx package - still a member of the @multimedia group - also ships.
+  # RPM Fusion hasn't added a Conflicts/Obsoletes against the new Fedora package yet, so the
+  # transaction fails at the RPM level ("file ... conflicts with file from package
+  # pipewire-libs-extra" in CI) rather than at depsolve time. Unlike libfdk-aac/libheif-ffmpeg
+  # above, pipewire-codec-aptx is an actual fresh install candidate here (pulled in by the
+  # group, not pre-installed by the base image), so a plain --exclude works.
   # https://rpmfusion.org/Howto/Multimedia
   - type: containerfile
     snippets:
       - |
         RUN dnf5 -y config-manager setopt fedora-cisco-openh264.enabled=1 \
+            && if rpm -q libheif-ffmpeg >/dev/null 2>&1; then dnf5 -y remove --no-autoremove libheif-ffmpeg; fi \
             && dnf5 -y swap ffmpeg-free ffmpeg --allowerasing \
-            && dnf5 -y install @multimedia --exclude=libfdk-aac,PackageKit-gstreamer-plugin --setopt="install_weak_deps=False"
+            && dnf5 -y install @multimedia --exclude=libfdk-aac,libheif-ffmpeg,pipewire-codec-aptx,PackageKit-gstreamer-plugin --setopt="install_weak_deps=False"
 
   # RPM Fusion's freeworld Mesa VA-API/Vulkan drivers (proprietary H.264/HEVC/VC1/AV1
   # hardware codec support Fedora's own Mesa can't ship), 64-bit + i686 - the plain package
