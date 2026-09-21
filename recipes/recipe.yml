@@ -166,8 +166,16 @@ modules:
   # anyway, since this module runs last). BootLoaderSpec also derives the
   # GRUB boot-menu entry's title from PRETTY_NAME, so this is what fixes that
   # too.
+  #
+  # fastfetch config pulled from the user's own X27-Fastfetch-Config repo at
+  # build time, same pattern as X-Linuxtool/Brave below - future edits there
+  # land automatically on the next weekly rebuild.
   - type: containerfile
     snippets:
+      - |
+        RUN mkdir -p /etc/xdg/fastfetch \
+            && curl -fsSL -o /etc/xdg/fastfetch/config.jsonc \
+                 https://raw.githubusercontent.com/GamerX27/X27-Fastfetch-Config/main/fastfetch/config.jsonc
       - |
         RUN curl -fsSL -o /usr/bin/x-linuxtool \
               https://codeberg.org/X27/X-Linuxtool/raw/branch/main/X-Linuxtool.sh \

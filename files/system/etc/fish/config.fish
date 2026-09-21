@@ -1,3 +1,3 @@
 if status is-interactive
-    fastfetch --logo Fedora
+    fastfetch
 end
