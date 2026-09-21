@@ -16,8 +16,9 @@ Image: `ghcr.io/gamerx27/kinoite-x27`
 ## Install
 
 **Fresh machine, no OS yet:** a custom installer ISO with everything in this
-repo already baked in is built weekly (and on demand) by
-[the `build-iso` workflow](.github/workflows/iso.yml) and published to the
+repo already baked in can be built on demand from
+[the `build-iso` workflow](.github/workflows/iso.yml) (Actions →
+**build-iso** → **Run workflow**) and gets published to the
 **[Releases page](https://github.com/GamerX27/X27-Kionite/releases/tag/iso-latest)**
 (always the current `main`, not a fixed version). Flash it (Fedora Media
 Writer works) and install like any other Fedora ISO.
