@@ -1,0 +1,156 @@
+---
+# yaml-language-server: $schema=https://schema.blue-build.org/recipe-v1.json
+
+name: x-os-media-pc
+description: X-OS-Fedora (Media PC) - X-OS-Fedora with the CachyOS LTS kernel, Jellyfin Desktop, Finamp, LocalSend, and Bazaar for a living-room media box
+base-image: ghcr.io/blue-build/base-images/fedora-kinoite
+image-version: latest
+
+modules:
+  # system config (as recipe-lts.yml) plus the media-pc overlay: taskbar pins
+  # for Jellyfin Desktop, VLC, and Finamp.
+  - type: files
+    files:
+      - source: system
+        destination: /
+      - source: media-pc
+        destination: /
+
+  # bootc image: package changes happen via dnf in the build container, not rpm-ostree.
+  - type: dnf
+    repos:
+      files:
+        - https://brave-browser-rpm-release.s3.brave.com/brave-browser.repo
+      keys:
+        - https://brave-browser-rpm-release.s3.brave.com/brave-core.asc
+      cleanup: true
+    install:
+      packages:
+        - brave-origin
+        - fastfetch
+        - fish
+        - htop
+        - nano
+        - nvtop
+        - papirus-icon-theme
+        - pciutils
+        - lm_sensors
+        - easyeffects
+        - distrobox
+    remove:
+      packages:
+        - firefox
+        - firefox-langpacks
+        - khelpcenter
+        - plasma-discover
+        - plasma-discover-notifier
+        - NetworkManager-config-connectivity-fedora
+
+  # Bazaar replaces Discover (removed above).
+  - type: default-flatpaks@v1
+    notify: true
+    system:
+      install:
+        - org.videolan.VLC
+        - org.jellyfin.JellyfinDesktop
+        - com.unicornsonlsd.finamp
+        - org.localsend.localsend_app
+        - io.github.kolunmi.Bazaar
+
+  - type: dnf
+    repos:
+      copr:
+        - lilay/topgrade
+      cleanup: true
+    install:
+      packages:
+        - topgrade
+
+  # Masks the base image's background auto-update timer; topgrade-reminder.timer
+  # (files/systemd/user/) nudges weekly instead.
+  - type: systemd
+    system:
+      masked:
+        - bootc-fetch-apply-updates.timer
+    user:
+      enabled:
+        - topgrade-reminder.timer
+
+  # kernel-cachyos-lts lives in the same bieszczaders/kernel-cachyos copr as the rolling
+  # kernel-cachyos package - there's no separate "kernel-cachyos-lts" copr (an earlier guess
+  # at one 404'd in CI). Needs an x86_64-v3 CPU. cleanup: false is deliberate: the copr must
+  # stay enabled for the containerfile install below, then gets disabled there.
+  - type: dnf
+    repos:
+      copr:
+        - bieszczaders/kernel-cachyos
+    install:
+      packages:
+        - sbsigntools
+        - mokutil
+
+  # kernel-cachyos-lts Provides: kernel, so the stock kernel is removed first (installing
+  # the new one first would remove it right back out). noscripts skips the RPM's
+  # post-install kernel-install/dracut hook, which fails before depmod has run - depmod
+  # runs manually below.
+  - type: containerfile
+    snippets:
+      - |
+        RUN set -eu \
+            && STOCK_KVER="$(rpm -q --queryformat '%{VERSION}-%{RELEASE}.%{ARCH}\n' kernel-core | tail -n1)" \
+            && echo "Removing Fedora kernel ${STOCK_KVER}" \
+            && dnf5 -y remove --no-autoremove \
+                 kernel kernel-core kernel-modules kernel-modules-core kernel-modules-extra \
+            && rm -rf "/usr/lib/modules/${STOCK_KVER}" \
+            && dnf5 -y install --setopt=tsflags=noscripts \
+                 kernel-cachyos-lts kernel-cachyos-lts-devel-matched \
+            && dnf5 -y install --skip-unavailable virtualbox-guest-additions \
+            && dnf5 -y copr disable bieszczaders/kernel-cachyos \
+            && dnf5 clean all \
+            && test "$(ls -1 /usr/lib/modules | wc -l)" -eq 1 \
+            && KVER="$(ls -1 /usr/lib/modules)" \
+            && test -f "/usr/lib/modules/${KVER}/vmlinuz" \
+            && depmod -a "${KVER}" \
+            && test -f "/usr/lib/modules/${KVER}/modules.dep" \
+            && echo "Kernel now: ${KVER}"
+
+  # Regenerates initramfs to pick up the kernel swap above. Must run after it.
+  - type: initramfs
+
+  # make_brave_great_again.sh's /etc/hosts step always fails here (buildah bind-mounts it
+  # read-only during RUN) and is ignored; the policy file it writes is verified explicitly instead.
+  - type: containerfile
+    snippets:
+      - |
+        RUN mkdir -p /etc/xdg/fastfetch \
+            && curl -fsSL -o /etc/xdg/fastfetch/config.jsonc \
+                 https://raw.githubusercontent.com/GamerX27/X27-Fastfetch-Config/main/fastfetch/config.jsonc
+      - |
+        RUN curl -fsSL -o /usr/bin/x-linuxtool \
+              https://codeberg.org/X27/X-Linuxtool/raw/branch/main/X-Linuxtool.sh \
+            && chmod +x /usr/bin/x-linuxtool
+      - |
+        RUN set -eu; \
+            curl -fsSL -o /tmp/make_brave_great_again.sh \
+              https://codeberg.org/X27/X-Linuxtool/raw/branch/main/Desktop/Linux-Desktop/Browser/make_brave_great_again.sh; \
+            chmod +x /tmp/make_brave_great_again.sh; \
+            /tmp/make_brave_great_again.sh || true; \
+            test -f /etc/brave/policies/managed/make_brave_great_again.json; \
+            rm -f /tmp/make_brave_great_again.sh
+      - |
+        RUN if grep -q '^LC_TIME=' /etc/locale.conf 2>/dev/null; then \
+              sed -i 's/^LC_TIME=.*/LC_TIME=C.UTF-8/' /etc/locale.conf; \
+            else \
+              echo 'LC_TIME=C.UTF-8' >> /etc/locale.conf; \
+            fi
+      - |
+        RUN plymouth-set-default-theme -R bgrt
+      # Set directly here, not via BlueBuild's os-release module: a value substituted into
+      # the recipe by an earlier workflow step doesn't survive blue-build's own checkout
+      # right before the build starts.
+      - |
+        RUN BUILD_DATE="$(date -u +%Y-%m-%d)" \
+            && sed -i "s|^PRETTY_NAME=.*|PRETTY_NAME=\"Fedora Kinoite (x-os-media-pc, build ${BUILD_DATE})\"|" /etc/os-release \
+            && echo "BUILD_ID=\"${BUILD_DATE}\"" >> /etc/os-release
+
+  - type: signing

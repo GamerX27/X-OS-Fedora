@@ -28,6 +28,7 @@ on:
           - recipe.yml
           - recipe-lts.yml
           - recipe-gaming.yml
+          - recipe-media-pc.yml
 
 jobs:
   build:
@@ -35,7 +36,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        recipe: ${{ (github.event_name == 'workflow_dispatch' && github.event.inputs.recipe != 'all') && fromJSON(format('["{0}"]', github.event.inputs.recipe)) || fromJSON('["recipe.yml","recipe-lts.yml","recipe-gaming.yml"]') }}
+        recipe: ${{ (github.event_name == 'workflow_dispatch' && github.event.inputs.recipe != 'all') && fromJSON(format('["{0}"]', github.event.inputs.recipe)) || fromJSON('["recipe.yml","recipe-lts.yml","recipe-gaming.yml","recipe-media-pc.yml"]') }}
     runs-on: ubuntu-24.04
     permissions:
       contents: read

@@ -5,6 +5,7 @@ Custom Fedora Kinoite, built with [BlueBuild](https://blue-build.org/).
 - Base: `ghcr.io/gamerx27/x-os-fedora` — [recipe.yml](recipes/recipe.yml)
 - LTS kernel: `ghcr.io/gamerx27/x-os-fedora-lts` — [recipe-lts.yml](recipes/recipe-lts.yml)
 - Gaming: `ghcr.io/gamerx27/x-os-gaming` — [recipe-gaming.yml](recipes/recipe-gaming.yml)
+- Media PC: `ghcr.io/gamerx27/x-os-media-pc` — [recipe-media-pc.yml](recipes/recipe-media-pc.yml)
 
 ## What's in it
 
@@ -36,8 +37,9 @@ sudo rpm-ostree rebase ostree-image-signed:docker://ghcr.io/gamerx27/x-os-fedora
 systemctl reboot
 ```
 
-Swap `x-os-fedora` for `x-os-fedora-lts` (LTS kernel) or `x-os-gaming`
-(Steam/gaming, see below) in the commands above.
+Swap `x-os-fedora` for `x-os-fedora-lts` (LTS kernel), `x-os-gaming`
+(Steam/gaming, see below), or `x-os-media-pc` (media center, see below) in
+the commands above.
 
 ## Update
 
@@ -73,8 +75,8 @@ sudo flatpak remote-modify --disable fedora fedora-testing
 
 `x-os-fedora` and `x-os-gaming` ship the
 [CachyOS kernel](https://copr.fedorainfracloud.org/coprs/bieszczaders/kernel-cachyos/)
-(BORE scheduler); `x-os-fedora-lts` ships its LTS variant instead. Both
-replace the stock Fedora kernel.
+(BORE scheduler); `x-os-fedora-lts` and `x-os-media-pc` ship its LTS variant
+instead. All replace the stock Fedora kernel.
 
 - **Needs an x86_64-v3 CPU** (Zen-family AMD, Haswell+ Intel). Older CPUs
   won't boot it. Check with:
@@ -92,6 +94,16 @@ Everything above, plus:
 - `proton-cachyos-install` — run it yourself to install or update
   [Proton-CachyOS](https://github.com/CachyOS/proton-cachyos) into Steam
 - Steam, Konsole, and Brave pinned to the taskbar (new accounts only)
+
+## Media PC variant
+
+Everything in the base image, plus:
+
+- LTS kernel (see above)
+- Jellyfin Desktop and Finamp (Flatpak) for media playback
+- LocalSend (Flatpak) for quick file transfers
+- Bazaar (Flatpak) as an app store, replacing Discover
+- Jellyfin Desktop, VLC, and Finamp pinned to the taskbar (new accounts only)
 
 ## Build
 
