@@ -8,8 +8,9 @@ image-version: latest
 
 modules:
   # Ship system-wide config files (dark theme, Konsole, shell default, NM, rpm-ostreed,
-  # default browser - same as recipe.yml) plus the gaming-only overlay (Proton-CachyOS
-  # installer + its systemd unit, and the taskbar launcher pins).
+  # default browser - same as recipe.yml) plus the gaming-only overlay (the
+  # proton-cachyos-install command at /usr/bin, run manually - see README - and the
+  # taskbar launcher pins).
   - type: files
     files:
       - source: system
@@ -48,6 +49,17 @@ modules:
         - plasma-discover
         - plasma-discover-notifier
         - NetworkManager-config-connectivity-fedora
+
+  # VLC is shipped as a system-wide Flatpak from Flathub rather than the native
+  # RPM Fusion package, for consistency with the other x-os recipes (which don't
+  # carry RPM Fusion at all). default-flatpaks reconciles this at boot via a
+  # systemd unit (flatpak isn't something `dnf install` inside the build
+  # container can register into the image).
+  - type: default-flatpaks
+    notify: true
+    system:
+      install:
+        - org.videolan.VLC
 
   # topgrade drives updates manually now (system image, flatpaks, etc. in one
   # command) instead of bootc's silent background auto-update - see the

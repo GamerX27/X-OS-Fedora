@@ -16,6 +16,7 @@ gaming: `ghcr.io/gamerx27/x-os-gaming`)
 - Dark theme, Papirus-Dark icons, Konsole on Fish, Fish as default shell,
   fastfetch banner on new interactive shells
 - fastfetch, htop, nvtop, nano, pciutils, lm_sensors, topgrade
+- VLC (system-wide Flatpak from Flathub, installed/kept up to date automatically)
 - NetworkManager connectivity check off, `NetworkManager-config-connectivity-fedora` removed
 - Auto-updates off — `bootc-fetch-apply-updates.timer` is masked; a weekly
   desktop notification reminds you to run `topgrade` instead (see below)
@@ -126,10 +127,13 @@ Everything in `x-os-fedora` above, plus:
 - RPM Fusion free+nonfree enabled, full multimedia codecs
   (`ffmpeg` swap, `@multimedia` group), plus RPM Fusion's "freeworld" Mesa
   VA-API/Vulkan drivers (64-bit + i686) swapped in for proprietary hardware
-- [Proton-CachyOS](https://github.com/CachyOS/proton-cachyos) auto-installs/updates
-  itself into Steam's compatibility tools on first graphical login (runs as a
-  `systemd --user` unit — it can't be baked into the image build itself, since
-  it refuses to run as root and needs a real Steam-populated `$HOME`)
+- [Proton-CachyOS](https://github.com/CachyOS/proton-cachyos) installer available as
+  `proton-cachyos-install` — run it yourself (as your normal user, not root; it
+  refuses to run as root) whenever you want to install or update it into Steam's
+  compatibility tools:
+  ```
+  proton-cachyos-install
+  ```
 - Steam, Konsole, and Brave pinned as the only default taskbar launchers
   (**new accounts only** — see caveat below)
 

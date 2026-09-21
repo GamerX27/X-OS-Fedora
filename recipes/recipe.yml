@@ -45,6 +45,18 @@ modules:
         - plasma-discover-notifier
         - NetworkManager-config-connectivity-fedora
 
+  # VLC isn't in Fedora's own repos (patent-encumbered codecs) and this recipe
+  # doesn't otherwise carry RPM Fusion, so it's shipped as a system-wide Flatpak
+  # from Flathub instead. default-flatpaks reconciles this at boot via a systemd
+  # unit (flatpak isn't something `dnf install` inside the build container can
+  # register into the image), which is also why it's a separate module from the
+  # dnf one above rather than a package in it.
+  - type: default-flatpaks
+    notify: true
+    system:
+      install:
+        - org.videolan.VLC
+
   # topgrade drives updates manually now (system image, flatpaks, etc. in one
   # command) instead of bootc's silent background auto-update - see the
   # systemd module below, which masks bootc-fetch-apply-updates.timer and
