@@ -25,10 +25,8 @@ panel.addWidget("org.kde.plasma.kickoff")
 //panel.addWidget("org.kde.plasma.showActivityManager")
 panel.addWidget("org.kde.plasma.pager")
 
-// X-OS-Gaming: pin Steam, Konsole, and Brave in the task manager by default. Upstream's own
-// defaultPanel template (which this file is otherwise a copy of) leaves this empty - a fresh
-// Kinoite/Fedora-KDE profile has no pinned launchers at all. Desktop file IDs are asserted
-// against this image in recipes/recipe-gaming.yml right after steam/faugus/heroic install.
+// X-OS-Gaming: pins Steam, Konsole, and Brave (upstream's defaultPanel leaves this empty).
+// Desktop file IDs are asserted in recipes/recipe-gaming.yml after steam/faugus/heroic install.
 var taskManager = panel.addWidget("org.kde.plasma.icontasks")
 taskManager.currentConfigGroup = ["General"]
 taskManager.writeConfig("launchers", [

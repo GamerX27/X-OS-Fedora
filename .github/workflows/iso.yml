@@ -31,11 +31,8 @@ jobs:
       - name: Generate checksum
         run: sha256sum x-os-fedora.iso > x-os-fedora.iso.sha256sum
 
-      # NOTE: this is not a GitHub Release. The ISO comes out over 2 GiB,
-      # GitHub's hard per-asset size limit for Releases - uploading it there
-      # fails with "size must be less than 2147483648". A workflow artifact
-      # has no such cap, at the cost of requiring GitHub login to download
-      # and a 60-day expiry.
+      # Not a GitHub Release: the ISO exceeds Releases' 2 GiB per-asset limit. Artifacts
+      # have no such cap, at the cost of requiring GitHub login and a 60-day expiry.
       - name: Upload ISO as artifact
         uses: actions/upload-artifact@v7
         with:

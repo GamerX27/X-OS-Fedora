@@ -7,15 +7,12 @@ base-image: ghcr.io/blue-build/base-images/fedora-kinoite
 image-version: latest
 
 modules:
-  # Ship system-wide config files (dark theme, Konsole, shell default, NM, rpm-ostreed, default browser).
   - type: files
     files:
       - source: system
         destination: /
 
-  # This base image is bootc-style, so package changes are made with the dnf
-  # module (plain `dnf install`/`dnf remove` in the build container) rather
-  # than the rpm-ostree module, which requires a live ostree-booted system.
+  # bootc image: package changes happen via dnf in the build container, not rpm-ostree.
   - type: dnf
     repos:
       files:
@@ -45,22 +42,12 @@ modules:
         - plasma-discover-notifier
         - NetworkManager-config-connectivity-fedora
 
-  # VLC isn't in Fedora's own repos (patent-encumbered codecs) and this recipe
-  # doesn't otherwise carry RPM Fusion, so it's shipped as a system-wide Flatpak
-  # from Flathub instead. default-flatpaks reconciles this at boot via a systemd
-  # unit (flatpak isn't something `dnf install` inside the build container can
-  # register into the image), which is also why it's a separate module from the
-  # dnf one above rather than a package in it.
   - type: default-flatpaks
     notify: true
     system:
       install:
         - org.videolan.VLC
 
-  # topgrade drives updates manually now (system image, flatpaks, etc. in one
-  # command) instead of bootc's silent background auto-update - see the
-  # systemd module below, which masks bootc-fetch-apply-updates.timer and
-  # enables a weekly reminder to run it.
   - type: dnf
     repos:
       copr:
@@ -70,15 +57,8 @@ modules:
       packages:
         - topgrade
 
-  # bootc-fetch-apply-updates.timer is enabled by default on this base image
-  # and silently downloads+applies updates in the background; masked here in
-  # favor of running `topgrade` manually (it covers the system image via
-  # rpm-ostree/bootc as well as flatpaks, so one command replaces the auto
-  # timer). topgrade-reminder.timer (files/systemd/user/) nudges the user
-  # weekly via a desktop notification - see files/systemd/user/. The classic
-  # rpm-ostreed-automatic.timer is already masked on bootc images regardless.
-  # /etc/rpm-ostreed.conf still sets AutomaticUpdatePolicy=stage for any
-  # manual `rpm-ostree upgrade` runs.
+  # Masks the base image's background auto-update timer; topgrade-reminder.timer
+  # (files/systemd/user/) nudges weekly instead.
   - type: systemd
     system:
       masked:
@@ -87,22 +67,10 @@ modules:
       enabled:
         - topgrade-reminder.timer
 
-  # CachyOS LTS kernel. This is a *package* (kernel-cachyos-lts) within the
-  # same bieszczaders/kernel-cachyos copr already used by recipes/recipe.yml
-  # for the rolling kernel-cachyos package - there is no separate
-  # "kernel-cachyos-lts" copr project (confirmed against the copr API; an
-  # earlier version of this recipe guessed a separate copr and 404'd in CI).
-  # Tracks a longterm-stable upstream kernel instead of the rolling one.
-  # Still requires an x86_64-v3 CPU (any Zen-family AMD, Haswell+ Intel).
-  # sbsigntools/mokutil are here only so you can sign the kernel yourself if
-  # Secure Boot is enabled; the kernel itself ships unsigned.
-  # https://copr.fedorainfracloud.org/coprs/bieszczaders/kernel-cachyos/
-  # cleanup is deliberately NOT set here (defaults to false): the copr repo
-  # must still be enabled for the containerfile module below, which is where
-  # kernel-cachyos-lts actually gets installed. Setting cleanup: true disables
-  # the repo as soon as THIS module ends, before that later install ever
-  # runs. The repo gets disabled manually at the end of that swap step
-  # instead, once the install is actually done.
+  # kernel-cachyos-lts lives in the same bieszczaders/kernel-cachyos copr as the rolling
+  # kernel-cachyos package - there's no separate "kernel-cachyos-lts" copr (an earlier guess
+  # at one 404'd in CI). Needs an x86_64-v3 CPU. cleanup: false is deliberate: the copr must
+  # stay enabled for the containerfile install below, then gets disabled there.
   - type: dnf
     repos:
       copr:
@@ -112,17 +80,10 @@ modules:
         - sbsigntools
         - mokutil
 
-  # The swap itself can't be plain dnf install/remove: kernel-cachyos-lts
-  # Provides: kernel, so removing "kernel" after installing it would take the
-  # new kernel right back out - remove the stock kernel first, then install.
-  # tsflags=noscripts skips kernel-cachyos-lts's %posttrans (it runs
-  # kernel-install/dracut, which fails in a container build since nothing has
-  # run depmod yet); depmod is run manually instead. virtualbox-guest-additions
-  # is reinstalled afterward since it Requires: kernel and gets removed as a
-  # side effect of removing kernel-core.
-  #
-  # kernel-cachyos-lts-devel-matched confirmed present in the copr's
-  # fedora-44-x86_64 repodata alongside kernel-cachyos-lts itself.
+  # kernel-cachyos-lts Provides: kernel, so the stock kernel is removed first (installing
+  # the new one first would remove it right back out). noscripts skips the RPM's
+  # post-install kernel-install/dracut hook, which fails before depmod has run - depmod
+  # runs manually below.
   - type: containerfile
     snippets:
       - |
@@ -147,48 +108,8 @@ modules:
   # Regenerates initramfs to pick up the kernel swap above. Must run after it.
   - type: initramfs
 
-  # X-Linuxtool (X27's interactive setup/tooling launcher) installed as a
-  # standing command - https://codeberg.org/X27/X-Linuxtool. Its submenu
-  # scripts still fetch themselves at runtime, same as its normal
-  # curl-pipe-bash usage; this just installs the launcher itself.
-  #
-  # Brave debranding/hardening policy from the same project, applied here at
-  # build time (writes /etc/brave/policies/managed/) since Brave Origin is
-  # already installed above and this is a native RPM, not Flatpak, so the
-  # script's Flatpak branch is a no-op. Its /etc/hosts telemetry-blocking step
-  # is tolerated-but-not-fatal: buildah bind-mounts /etc/hosts read-only
-  # during RUN, so that part of the script always fails here regardless of
-  # what writes to it (confirmed in CI - "tee: /etc/hosts: Read-only file
-  # system"); the policy JSON (the part that actually matters) is verified
-  # with an explicit test instead of trusting the script's own exit code.
-  #
-  # LC_TIME=C.UTF-8: localectl (which talks to systemd over D-Bus) isn't
-  # usable during a container build, so this is set directly in
-  # /etc/locale.conf instead - preserving LANG/etc if the base image already
-  # sets them there, rather than overwriting the whole file.
-  #
-  # Plymouth pinned explicitly to Fedora's own default boot theme so it can't
-  # silently drift from whatever the base image or kernel swap above leaves
-  # in place; -R rebuilds the initramfs itself.
-  #
-  # /etc/os-release PRETTY_NAME/BUILD_ID get the actual build date stamped in
-  # directly with `date` here, inside the real build, rather than via
-  # BlueBuild's os-release module fed by a placeholder substituted in a
-  # workflow step beforehand - blue-build/github-action does its own
-  # `actions/checkout` internally before building, which clobbers any
-  # uncommitted edits a prior workflow step made to the recipe file, so that
-  # approach silently never took effect (confirmed in CI: the built image
-  # kept the literal, unsubstituted "$BUILD_DATE" placeholder). Only
-  # PRETTY_NAME/BUILD_ID are touched, not ID/ID_LIKE/VERSION_ID, so the image
-  # still self-identifies as plain Fedora everywhere that matters (dnf/copr
-  # releasever handling upstream of this already happened by this point
-  # anyway, since this module runs last). BootLoaderSpec also derives the
-  # GRUB boot-menu entry's title from PRETTY_NAME, so this is what fixes that
-  # too.
-  #
-  # fastfetch config pulled from the user's own X27-Fastfetch-Config repo at
-  # build time, same pattern as X-Linuxtool/Brave below - future edits there
-  # land automatically on the next weekly rebuild.
+  # make_brave_great_again.sh's /etc/hosts step always fails here (buildah bind-mounts it
+  # read-only during RUN) and is ignored; the policy file it writes is verified explicitly instead.
   - type: containerfile
     snippets:
       - |
@@ -215,6 +136,9 @@ modules:
             fi
       - |
         RUN plymouth-set-default-theme -R bgrt
+      # Set directly here, not via BlueBuild's os-release module: a value substituted into
+      # the recipe by an earlier workflow step doesn't survive blue-build's own checkout
+      # right before the build starts.
       - |
         RUN BUILD_DATE="$(date -u +%Y-%m-%d)" \
             && sed -i "s|^PRETTY_NAME=.*|PRETTY_NAME=\"Fedora Kinoite (x-os-fedora-lts, build ${BUILD_DATE})\"|" /etc/os-release \
