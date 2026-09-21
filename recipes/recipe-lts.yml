@@ -75,12 +75,16 @@ modules:
       enabled:
         - topgrade-reminder.timer
 
-  # CachyOS LTS kernel - same vendor/copr family as the rolling kernel-cachyos
-  # used in recipes/recipe.yml, but tracking a longterm-stable upstream kernel
-  # instead. Still requires an x86_64-v3 CPU (any Zen-family AMD, Haswell+
-  # Intel). sbsigntools/mokutil are here only so you can sign the kernel
-  # yourself if Secure Boot is enabled; the kernel itself ships unsigned.
-  # https://copr.fedorainfracloud.org/coprs/bieszczaders/kernel-cachyos-lts/
+  # CachyOS LTS kernel. This is a *package* (kernel-cachyos-lts) within the
+  # same bieszczaders/kernel-cachyos copr already used by recipes/recipe.yml
+  # for the rolling kernel-cachyos package - there is no separate
+  # "kernel-cachyos-lts" copr project (confirmed against the copr API; an
+  # earlier version of this recipe guessed a separate copr and 404'd in CI).
+  # Tracks a longterm-stable upstream kernel instead of the rolling one.
+  # Still requires an x86_64-v3 CPU (any Zen-family AMD, Haswell+ Intel).
+  # sbsigntools/mokutil are here only so you can sign the kernel yourself if
+  # Secure Boot is enabled; the kernel itself ships unsigned.
+  # https://copr.fedorainfracloud.org/coprs/bieszczaders/kernel-cachyos/
   # cleanup is deliberately NOT set here (defaults to false): the copr repo
   # must still be enabled for the containerfile module below, which is where
   # kernel-cachyos-lts actually gets installed. Setting cleanup: true disables
@@ -90,7 +94,7 @@ modules:
   - type: dnf
     repos:
       copr:
-        - bieszczaders/kernel-cachyos-lts
+        - bieszczaders/kernel-cachyos
     install:
       packages:
         - sbsigntools
@@ -105,10 +109,8 @@ modules:
   # is reinstalled afterward since it Requires: kernel and gets removed as a
   # side effect of removing kernel-core.
   #
-  # NOTE: verify kernel-cachyos-lts-devel-matched actually exists in this copr
-  # before relying on this - if it doesn't, drop it from the install line
-  # below (the LTS kernel doesn't necessarily ship a devel-matched package the
-  # way the rolling kernel-cachyos one does).
+  # kernel-cachyos-lts-devel-matched confirmed present in the copr's
+  # fedora-44-x86_64 repodata alongside kernel-cachyos-lts itself.
   - type: containerfile
     snippets:
       - |
@@ -121,7 +123,7 @@ modules:
             && dnf5 -y install --setopt=tsflags=noscripts \
                  kernel-cachyos-lts kernel-cachyos-lts-devel-matched \
             && dnf5 -y install --skip-unavailable virtualbox-guest-additions \
-            && dnf5 -y copr disable bieszczaders/kernel-cachyos-lts \
+            && dnf5 -y copr disable bieszczaders/kernel-cachyos \
             && dnf5 clean all \
             && test "$(ls -1 /usr/lib/modules | wc -l)" -eq 1 \
             && KVER="$(ls -1 /usr/lib/modules)" \

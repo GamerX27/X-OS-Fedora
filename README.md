@@ -96,8 +96,9 @@ sudo flatpak remote-modify --disable fedora fedora-testing
 
 `kinoite-x27` ships the [CachyOS kernel](https://copr.fedorainfracloud.org/coprs/bieszczaders/kernel-cachyos/)
 (BORE scheduler); `kinoite-x27-lts` ships the
-[CachyOS LTS kernel](https://copr.fedorainfracloud.org/coprs/bieszczaders/kernel-cachyos-lts/)
-instead — same vendor, a longterm-stable upstream kernel rather than the
+CachyOS LTS kernel (the `kernel-cachyos-lts` package in the same
+[kernel-cachyos copr](https://copr.fedorainfracloud.org/coprs/bieszczaders/kernel-cachyos/))
+instead — same vendor/copr, a longterm-stable upstream kernel rather than the
 rolling one. Both instead of stock Fedora's kernel.
 
 - **CPU must support x86_64-v3** (any Zen-family AMD, Haswell+ Intel), for
