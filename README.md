@@ -19,8 +19,7 @@ Custom Fedora Kinoite, built with [BlueBuild](https://blue-build.org/).
 
 ## Install
 
-**Fresh machine:** build an ISO from the `build-iso` GitHub Action (Actions →
-build-iso → Run workflow), then download it from
+**Fresh machine:**
 [archive.org](https://archive.org/details/x-os-fedora) or that run's
 Artifacts. Flash it with Fedora Media Writer and install normally.
 
