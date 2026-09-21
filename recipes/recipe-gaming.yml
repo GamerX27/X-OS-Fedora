@@ -50,11 +50,6 @@ modules:
         - plasma-discover-notifier
         - NetworkManager-config-connectivity-fedora
 
-  # VLC is shipped as a system-wide Flatpak from Flathub rather than the native
-  # RPM Fusion package, for consistency with the other x-os recipes (which don't
-  # carry RPM Fusion at all). default-flatpaks reconciles this at boot via a
-  # systemd unit (flatpak isn't something `dnf install` inside the build
-  # container can register into the image).
   - type: default-flatpaks
     notify: true
     system:
