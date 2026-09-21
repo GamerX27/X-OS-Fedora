@@ -132,44 +132,45 @@ modules:
   # Regenerates initramfs to pick up the kernel swap above. Must run after it.
   - type: initramfs
 
-  # RPM Fusion + gaming COPRs + gaming packages. Installing steam/gamescope/etc. here pulls
-  # in stock mesa-vulkan-drivers as a dependency; intentional - it gets swapped for RPM
-  # Fusion's freeworld build further down.
+  # RPM Fusion + gaming COPRs + gaming packages. A plain `type: dnf` module here (repos +
+  # install together, like the base-packages module above) hit a real RPM Fusion multilib
+  # packaging bug in CI: the moment anything in the transaction touches pipewire (gamescope,
+  # steam all need it), the solver prefers upgrading 64-bit libfdk-aac to the RPM Fusion
+  # nonfree build, whose Obsoletes carries a higher epoch than the available fdk-aac.i686 -
+  # so ANY epoch-0 fdk-aac.i686 looks "older" regardless of its actual release number, making
+  # it permanently unselectable and breaking steam.i686's pipewire-alsa(x86-32) requirement
+  # ("Failed to resolve the transaction" / "conflicting requests" in CI). We don't need
+  # proprietary FDK-AAC *encoding* quality here (hardware video codec support already comes
+  # from the freeworld Mesa VA-API drivers below), so `--exclude=libfdk-aac` sidesteps the
+  # whole bug by keeping the patent-safe fdk-aac-free build on both arches. Needs a
+  # containerfile RUN instead of the declarative dnf module since that module has no
+  # exclude option; COPRs are enabled/disabled by hand here for the same reason.
   # https://copr.fedorainfracloud.org/coprs/atim/heroic-games-launcher/
   # https://copr.fedorainfracloud.org/coprs/faugus/faugus-launcher/
-  - type: dnf
-    repos:
-      nonfree: rpmfusion
-      copr:
-        - atim/heroic-games-launcher
-        - faugus/faugus-launcher
-      cleanup: true
-    install:
-      skip-unavailable: true
-      packages:
-        - steam
-        - steam-devices
-        - gamemode
-        - gamescope
-        - mangohud
-        - goverlay
-        - faugus-launcher
-        - heroic-games-launcher-bin
-        - mesa-vulkan-drivers
-        - mesa-vulkan-drivers.i686
-        - vulkan-loader
-        - vulkan-tools
-        - amd-gpu-firmware
+  - type: containerfile
+    snippets:
+      - |
+        RUN dnf5 -y install \
+              https://mirrors.rpmfusion.org/free/fedora/rpmfusion-free-release-$(rpm -E %fedora).noarch.rpm \
+              https://mirrors.rpmfusion.org/nonfree/fedora/rpmfusion-nonfree-release-$(rpm -E %fedora).noarch.rpm \
+            && dnf5 -y copr enable atim/heroic-games-launcher \
+            && dnf5 -y copr enable faugus/faugus-launcher \
+            && dnf5 -y install --skip-unavailable --exclude=libfdk-aac \
+                 steam steam-devices gamemode gamescope mangohud goverlay \
+                 faugus-launcher heroic-games-launcher-bin \
+                 mesa-vulkan-drivers mesa-vulkan-drivers.i686 vulkan-loader vulkan-tools amd-gpu-firmware \
+            && dnf5 -y copr disable atim/heroic-games-launcher \
+            && dnf5 -y copr disable faugus/faugus-launcher
 
-  # RPM Fusion multimedia codecs (ffmpeg swap, @multimedia group) - same containerfile-RUN
-  # style used elsewhere in this recipe rather than a script module (unused in this repo).
+  # RPM Fusion multimedia codecs (ffmpeg swap, @multimedia group). Same libfdk-aac exclusion
+  # as above, for the same reason - @multimedia can pull the same nonfree AAC codec.
   # https://rpmfusion.org/Howto/Multimedia
   - type: containerfile
     snippets:
       - |
         RUN dnf5 -y config-manager setopt fedora-cisco-openh264.enabled=1 \
             && dnf5 -y swap ffmpeg-free ffmpeg --allowerasing \
-            && dnf5 -y install @multimedia --setopt="install_weak_deps=False" --exclude=PackageKit-gstreamer-plugin
+            && dnf5 -y install @multimedia --exclude=libfdk-aac,PackageKit-gstreamer-plugin --setopt="install_weak_deps=False"
 
   # RPM Fusion's freeworld Mesa VA-API/Vulkan drivers (proprietary H.264/HEVC/VC1/AV1
   # hardware codec support Fedora's own Mesa can't ship), 64-bit + i686 - the plain package
