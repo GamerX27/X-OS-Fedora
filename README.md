@@ -11,9 +11,11 @@ Custom Fedora Kinoite, built with [BlueBuild](https://blue-build.org/).
 
 - Brave (default browser), debranded with [X-Linuxtool](https://codeberg.org/X27/X-Linuxtool)
 - Removed: Firefox, KHelpCenter, Discover
-- Dark theme, Papirus icons, Fish shell, Konsole on Fish, fastfetch banner
+- Dark theme, Papirus icons, Fish shell, Kitty terminal, fastfetch banner
 - fastfetch, htop, nvtop, nano, pciutils, lm_sensors, topgrade
 - VLC (Flatpak)
+- Brave, Dolphin, and Kitty pinned to the taskbar (new accounts only)
+- Hot corners and the shake-to-locate-cursor effect disabled (new accounts only)
 - CachyOS kernel (BORE scheduler); LTS variant published separately
 - Auto-updates off — update manually with `topgrade`
 - `/etc/os-release` stamped with the build date
@@ -52,7 +54,8 @@ Nothing updates on its own — you always run this yourself.
 
 ## First login after rebasing
 
-Theme, icons, shell, and Konsole only apply to new accounts. Run once as
+Theme, icons, shell, and the hot-corners/shake-cursor settings only apply to
+new accounts. Run once as
 yourself, no `sudo`:
 
 ```
@@ -93,7 +96,7 @@ Everything above, plus:
 - RPM Fusion codecs and freeworld Mesa VA-API/Vulkan drivers
 - `proton-cachyos-install` — run it yourself to install or update
   [Proton-CachyOS](https://github.com/CachyOS/proton-cachyos) into Steam
-- Steam, Konsole, and Brave pinned to the taskbar (new accounts only)
+- Steam, Kitty, and Brave pinned to the taskbar (new accounts only)
 
 ## Media PC variant
 

@@ -30,6 +30,7 @@ modules:
         - fastfetch
         - fish
         - htop
+        - kitty
         - nano
         - nvtop
         - papirus-icon-theme
@@ -42,6 +43,7 @@ modules:
         - firefox
         - firefox-langpacks
         - khelpcenter
+        - konsole
         - plasma-discover
         - plasma-discover-notifier
         - NetworkManager-config-connectivity-fedora
@@ -162,7 +164,7 @@ modules:
     snippets:
       - |
         RUN test -f /usr/share/applications/steam.desktop \
-            && test -f /usr/share/applications/org.kde.konsole.desktop \
+            && test -f /usr/share/applications/kitty.desktop \
             && test -f /usr/share/applications/brave-origin.desktop
 
   # make_brave_great_again.sh's /etc/hosts step always fails here (buildah bind-mounts it

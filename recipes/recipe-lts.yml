@@ -7,9 +7,12 @@ base-image: ghcr.io/blue-build/base-images/fedora-kinoite
 image-version: latest
 
 modules:
+  # system config, plus the base taskbar overlay: Brave/Dolphin/Kitty pins.
   - type: files
     files:
       - source: system
+        destination: /
+      - source: base
         destination: /
 
   # bootc image: package changes happen via dnf in the build container, not rpm-ostree.
@@ -26,6 +29,7 @@ modules:
         - fastfetch
         - fish
         - htop
+        - kitty
         - nano
         - nvtop
         - papirus-icon-theme
@@ -38,6 +42,7 @@ modules:
         - firefox
         - firefox-langpacks
         - khelpcenter
+        - konsole
         - plasma-discover
         - plasma-discover-notifier
         - NetworkManager-config-connectivity-fedora
@@ -107,6 +112,14 @@ modules:
 
   # Regenerates initramfs to pick up the kernel swap above. Must run after it.
   - type: initramfs
+
+  # Sanity check: files/base's layout.js pins these desktop files in the taskbar.
+  - type: containerfile
+    snippets:
+      - |
+        RUN test -f /usr/share/applications/brave-origin.desktop \
+            && test -f /usr/share/applications/org.kde.dolphin.desktop \
+            && test -f /usr/share/applications/kitty.desktop
 
   # make_brave_great_again.sh's /etc/hosts step always fails here (buildah bind-mounts it
   # read-only during RUN) and is ignored; the policy file it writes is verified explicitly instead.

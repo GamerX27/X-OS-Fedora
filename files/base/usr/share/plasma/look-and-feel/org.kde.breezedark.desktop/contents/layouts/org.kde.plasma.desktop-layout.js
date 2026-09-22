@@ -25,14 +25,15 @@ panel.addWidget("org.kde.plasma.kickoff")
 //panel.addWidget("org.kde.plasma.showActivityManager")
 panel.addWidget("org.kde.plasma.pager")
 
-// X-OS-Gaming: pins Steam, Kitty, and Brave (upstream's defaultPanel leaves this empty).
-// Desktop file IDs are asserted in recipes/recipe-gaming.yml after steam/faugus/heroic install.
+// X-OS-Fedora: pins Brave, Dolphin, and Kitty (upstream's defaultPanel leaves this empty).
+// This layout ships in the base image, so it also reaches the installer ISO
+// (bluebuild generate-iso builds only from the base image, see .github/workflows/iso.yml).
 var taskManager = panel.addWidget("org.kde.plasma.icontasks")
 taskManager.currentConfigGroup = ["General"]
 taskManager.writeConfig("launchers", [
-    "applications:steam.desktop",
-    "applications:kitty.desktop",
-    "applications:brave-origin.desktop"
+    "applications:brave-origin.desktop",
+    "applications:org.kde.dolphin.desktop",
+    "applications:kitty.desktop"
 ])
 
 panel.addWidget("org.kde.plasma.marginsseparator")
