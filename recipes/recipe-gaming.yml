@@ -66,9 +66,13 @@ modules:
         - topgrade
 
   # Masks the base image's background auto-update timer; topgrade-reminder.timer
-  # (files/systemd/user/) nudges weekly instead.
+  # (files/systemd/user/) nudges weekly instead. x-os-install-date.service
+  # (files/systemd/system/) stamps /var/lib/x-os/install-date on first boot only,
+  # for fastfetch's OS Age - /var persists across updates, unlike /etc or /usr.
   - type: systemd
     system:
+      enabled:
+        - x-os-install-date.service
       masked:
         - bootc-fetch-apply-updates.timer
     user:
@@ -225,6 +229,6 @@ modules:
       - |
         RUN BUILD_DATE="$(date -u +%Y-%m-%d)" \
             && sed -i "s|^PRETTY_NAME=.*|PRETTY_NAME=\"Fedora Kinoite (x-os-gaming, build ${BUILD_DATE})\"|" /etc/os-release \
-            && echo "BUILD_ID=\"${BUILD_DATE}\"" >> /etc/os-release
+            && printf '\nBUILD_ID="%s"\n' "${BUILD_DATE}" >> /etc/os-release
 
   - type: signing
