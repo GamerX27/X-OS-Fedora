@@ -114,3 +114,25 @@ Everything in the base image, plus:
 
 Pushes to `main` build and publish automatically via GitHub Actions, which
 also rebuilds weekly to pick up upstream Kinoite/Brave/kernel updates.
+
+## Build ISO locally
+
+Generates an installer ISO from the already-published `ghcr.io/gamerx27`
+image, the same approach as the CI [`iso.yml`](.github/workflows/iso.yml)
+workflow — nothing is built from local recipes, so this needs a network
+connection to GHCR.
+
+**Prerequisites:**
+- podman
+- sudo access
+- ~20GB free disk (image pull + ISO — past ISOs have run ~6.5GB)
+- x86_64-v3 CPU to boot the resulting image (see [Kernel](#kernel) above)
+
+```
+./scripts/build-iso.sh [fedora|lts|gaming|media-pc]
+```
+
+Defaults to `fedora` if no argument is given. Installs the BlueBuild CLI on
+first run if it's missing (asks for confirmation before running the
+installer; pass `-y` to skip the prompt). Output goes to `iso-out/` at the
+repo root: `<name>.iso` and `<name>.iso.sha256sum`.
