@@ -25,7 +25,7 @@ panel.addWidget("org.kde.plasma.kickoff")
 //panel.addWidget("org.kde.plasma.showActivityManager")
 panel.addWidget("org.kde.plasma.pager")
 
-// X-OS-Fedora: pins Brave, Dolphin, and Kitty (upstream's defaultPanel leaves this empty).
+// X-OS-Fedora: pins Brave, Dolphin, Kitty, and Bazaar (upstream's defaultPanel leaves this empty).
 // This layout ships in the base image, so it also reaches the installer ISO
 // (bluebuild generate-iso builds only from the base image, see .github/workflows/iso.yml).
 var taskManager = panel.addWidget("org.kde.plasma.icontasks")
@@ -33,7 +33,8 @@ taskManager.currentConfigGroup = ["General"]
 taskManager.writeConfig("launchers", [
     "applications:brave-origin.desktop",
     "applications:org.kde.dolphin.desktop",
-    "applications:kitty.desktop"
+    "applications:kitty.desktop",
+    "applications:io.github.kolunmi.Bazaar.desktop"
 ])
 
 panel.addWidget("org.kde.plasma.marginsseparator")

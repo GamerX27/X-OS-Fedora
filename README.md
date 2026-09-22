@@ -13,8 +13,8 @@ Custom Fedora Kinoite, built with [BlueBuild](https://blue-build.org/).
 - Removed: Firefox, KHelpCenter, Discover
 - Dark theme, Papirus icons, Fish shell, Kitty terminal, fastfetch banner
 - fastfetch, htop, nvtop, nano, pciutils, lm_sensors, topgrade
-- VLC (Flatpak)
-- Brave, Dolphin, and Kitty pinned to the taskbar (new accounts only)
+- VLC and Bazaar (Flatpak), Bazaar replacing Discover
+- Brave, Dolphin, Kitty, and Bazaar pinned to the taskbar (new accounts only)
 - Hot corners and the shake-to-locate-cursor effect disabled (new accounts only)
 - CachyOS kernel (BORE scheduler); LTS variant published separately
 - Auto-updates off — update manually with `topgrade`
@@ -60,10 +60,13 @@ yourself, no `sudo`:
 
 ```
 plasma-apply-lookandfeel -a org.kde.breezedark.desktop
-kwriteconfig6 --file kdeglobals --group Icons --key Theme Papirus-Dark
 chsh -s /usr/bin/fish "$USER"
 kquitapp6 plasmashell; kstart plasmashell >/dev/null 2>&1 &
 ```
+
+`plasma-apply-lookandfeel` now brings Papirus-Dark icons with it (our
+`org.kde.breezedark.desktop` package overrides the upstream defaults, which
+otherwise apply `breeze-dark`).
 
 Log out and back in afterward for the shell change to take effect.
 
@@ -96,7 +99,7 @@ Everything above, plus:
 - RPM Fusion codecs and freeworld Mesa VA-API/Vulkan drivers
 - `proton-cachyos-install` — run it yourself to install or update
   [Proton-CachyOS](https://github.com/CachyOS/proton-cachyos) into Steam
-- Steam, Kitty, and Brave pinned to the taskbar (new accounts only)
+- Steam, Kitty, Brave, and Bazaar pinned to the taskbar (new accounts only)
 
 ## Media PC variant
 
@@ -105,8 +108,7 @@ Everything in the base image, plus:
 - LTS kernel (see above)
 - Jellyfin Desktop and Finamp (Flatpak) for media playback
 - LocalSend (Flatpak) for quick file transfers
-- Bazaar (Flatpak) as an app store, replacing Discover
-- Jellyfin Desktop, VLC, and Finamp pinned to the taskbar (new accounts only)
+- Jellyfin Desktop, VLC, Finamp, and Bazaar pinned to the taskbar (new accounts only)
 
 ## Build
 

@@ -2,7 +2,7 @@
 # yaml-language-server: $schema=https://schema.blue-build.org/recipe-v1.json
 
 name: x-os-media-pc
-description: X-OS-Fedora (Media PC) - X-OS-Fedora with the CachyOS LTS kernel, Jellyfin Desktop, Finamp, LocalSend, and Bazaar for a living-room media box
+description: X-OS-Fedora (Media PC) - X-OS-Fedora with the CachyOS LTS kernel, Jellyfin Desktop, Finamp, and LocalSend for a living-room media box
 base-image: ghcr.io/blue-build/base-images/fedora-kinoite
 image-version: latest
 
@@ -124,10 +124,6 @@ modules:
   - type: containerfile
     snippets:
       - |
-        RUN mkdir -p /etc/xdg/fastfetch \
-            && curl -fsSL -o /etc/xdg/fastfetch/config.jsonc \
-                 https://raw.githubusercontent.com/GamerX27/X27-Fastfetch-Config/main/fastfetch/config.jsonc
-      - |
         RUN curl -fsSL -o /usr/bin/x-linuxtool \
               https://codeberg.org/X27/X-Linuxtool/raw/branch/main/X-Linuxtool.sh \
             && chmod +x /usr/bin/x-linuxtool
@@ -139,12 +135,38 @@ modules:
             /tmp/make_brave_great_again.sh || true; \
             test -f /etc/brave/policies/managed/make_brave_great_again.json; \
             rm -f /tmp/make_brave_great_again.sh
+      # localectl normally talks to systemd-localed over D-Bus; whether that's reachable
+      # in this build step (no PID 1 systemd) is unverified here, so the sed/echo fallback
+      # below (the previous approach) only fires if set_locale_time doesn't take.
       - |
-        RUN if grep -q '^LC_TIME=' /etc/locale.conf 2>/dev/null; then \
-              sed -i 's/^LC_TIME=.*/LC_TIME=C.UTF-8/' /etc/locale.conf; \
-            else \
-              echo 'LC_TIME=C.UTF-8' >> /etc/locale.conf; \
-            fi
+        RUN info() { echo "[INFO] $*"; }; \
+            ok()   { echo "[OK] $*"; }; \
+            warn() { echo "[WARN] $*"; }; \
+            err()  { echo "[ERR] $*"; }; \
+            set_locale_time() { \
+                info "Attempting to set LC_TIME to C.UTF-8..."; \
+                if ! locales=$(localectl list-locales 2>/dev/null); then \
+                    err "localectl is not available."; \
+                    return 1; \
+                fi; \
+                if echo "$locales" | grep -q "C.UTF-8"; then \
+                    if localectl set-locale LC_TIME=C.UTF-8; then \
+                        ok "Successfully set LC_TIME."; \
+                    else \
+                        err "Failed to set the locale time."; \
+                        return 1; \
+                    fi; \
+                else \
+                    warn "C.UTF-8 locale not available. Skipping."; \
+                fi; \
+            }; \
+            set_locale_time || { \
+                if grep -q '^LC_TIME=' /etc/locale.conf 2>/dev/null; then \
+                    sed -i 's/^LC_TIME=.*/LC_TIME=C.UTF-8/' /etc/locale.conf; \
+                else \
+                    echo 'LC_TIME=C.UTF-8' >> /etc/locale.conf; \
+                fi; \
+            }
       - |
         RUN plymouth-set-default-theme -R bgrt
       # Set directly here, not via BlueBuild's os-release module: a value substituted into

@@ -25,14 +25,15 @@ panel.addWidget("org.kde.plasma.kickoff")
 //panel.addWidget("org.kde.plasma.showActivityManager")
 panel.addWidget("org.kde.plasma.pager")
 
-// X-OS-Media-PC: pins Jellyfin Desktop, VLC, and Finamp (upstream's defaultPanel
+// X-OS-Media-PC: pins Jellyfin Desktop, VLC, Finamp, and Bazaar (upstream's defaultPanel
 // leaves this empty). Flatpak app IDs - no build-time desktop file to assert on.
 var taskManager = panel.addWidget("org.kde.plasma.icontasks")
 taskManager.currentConfigGroup = ["General"]
 taskManager.writeConfig("launchers", [
     "applications:org.jellyfin.JellyfinDesktop.desktop",
     "applications:org.videolan.VLC.desktop",
-    "applications:com.unicornsonlsd.finamp.desktop"
+    "applications:com.unicornsonlsd.finamp.desktop",
+    "applications:io.github.kolunmi.Bazaar.desktop"
 ])
 
 panel.addWidget("org.kde.plasma.marginsseparator")
