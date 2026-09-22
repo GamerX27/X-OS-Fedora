@@ -1,6 +1,12 @@
 name: build-iso
 on:
   workflow_dispatch:
+    inputs:
+      cleanup_only:
+        description: "Skip the build; only prune superseded versions from the Internet Archive item"
+        required: false
+        default: false
+        type: boolean
 
 concurrency:
   group: ${{ github.workflow }}
@@ -19,21 +25,26 @@ jobs:
         uses: actions/checkout@v5
 
       - name: Maximize build space
+        if: ${{ !inputs.cleanup_only }}
         uses: ublue-os/remove-unwanted-software@v9
 
       - name: Install BlueBuild CLI
+        if: ${{ !inputs.cleanup_only }}
         run: bash <(curl -s https://raw.githubusercontent.com/blue-build/cli/main/install.sh)
 
       - name: Generate ISO
+        if: ${{ !inputs.cleanup_only }}
         run: |
           sudo bluebuild generate-iso --iso-name x-os-fedora.iso image ghcr.io/gamerx27/x-os-fedora:latest
 
       - name: Generate checksum
+        if: ${{ !inputs.cleanup_only }}
         run: sha256sum x-os-fedora.iso > x-os-fedora.iso.sha256sum
 
       # Not a GitHub Release: the ISO exceeds Releases' 2 GiB per-asset limit. Artifacts
       # have no such cap, at the cost of requiring GitHub login and a 60-day expiry.
       - name: Upload ISO as artifact
+        if: ${{ !inputs.cleanup_only }}
         uses: actions/upload-artifact@v7
         with:
           name: x-os-fedora-iso
@@ -46,6 +57,7 @@ jobs:
       # Public, permanent, no-login mirror. Re-running this uploads over the same
       # archive.org item (identifier stays fixed), so the download link never changes.
       - name: Upload ISO to Internet Archive
+        if: ${{ !inputs.cleanup_only }}
         env:
           IA_ACCESS_KEY_ID: ${{ secrets.IA_ACCESS_KEY }}
           IA_SECRET_ACCESS_KEY: ${{ secrets.IA_SECRET_KEY }}
@@ -60,3 +72,20 @@ jobs:
             --metadata="mediatype:software" \
             --metadata="collection:open_source_software" \
             --metadata="description:Custom Fedora Kinoite installer ISO, built with BlueBuild. https://github.com/GamerX27/X-OS-Fedora"
+
+      # ia upload keeps the file it replaces as a "history/files/<name>.~N~" backup instead
+      # of deleting it, so re-running the step above (or this one via cleanup_only) grows
+      # the item indefinitely. We only ever want the current ISO reachable, so prune those
+      # backups every time. Unverified here (no archive.org write access in this sandbox):
+      # `ia delete --glob` matching remote paths.
+      - name: Prune superseded Internet Archive versions
+        env:
+          IA_ACCESS_KEY_ID: ${{ secrets.IA_ACCESS_KEY }}
+          IA_SECRET_ACCESS_KEY: ${{ secrets.IA_SECRET_KEY }}
+        run: |
+          if [ -z "$IA_ACCESS_KEY_ID" ] || [ -z "$IA_SECRET_ACCESS_KEY" ]; then
+            echo "IA_ACCESS_KEY/IA_SECRET_KEY not set, skipping Internet Archive cleanup."
+            exit 0
+          fi
+          pip install --quiet internetarchive
+          ia delete x-os-fedora --glob 'history/files/*' --verbose
