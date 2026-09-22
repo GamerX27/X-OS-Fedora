@@ -84,9 +84,6 @@ fi
 
 echo "Building ${ISO_NAME} from ${IMAGE_REF}"
 cd "$OUT_DIR"
-# Rootful podman here has no outbound network at all (bridge/NAT setup issue,
-# confirmed separately from DNS - rootless podman works fine). Docker's own
-# daemon-managed iptables rules sidestep it.
 sudo bluebuild generate-iso --build-driver docker --run-driver docker \
   --iso-name "$ISO_NAME" image "$IMAGE_REF"
 sudo chown "$(id -un):$(id -gn)" "$ISO_NAME"

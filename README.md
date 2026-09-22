@@ -123,9 +123,7 @@ workflow — nothing is built from local recipes, so this needs a network
 connection to GHCR.
 
 **Prerequisites:**
-- docker (the script forces `--build-driver docker --run-driver docker`;
-  rootful podman's networking can be broken on some machines - Docker runs
-  its own daemon-managed NAT and sidesteps that)
+- docker
 - sudo access
 - ~20GB free disk (image pull + ISO — past ISOs have run ~6.5GB)
 - x86_64-v3 CPU to boot the resulting image (see [Kernel](#kernel) above)
