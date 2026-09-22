@@ -8,7 +8,7 @@ image-version: latest
 
 modules:
   # system config (as recipe-lts.yml) plus the media-pc overlay: taskbar pins
-  # for Jellyfin Desktop, VLC, and Finamp.
+  # for Dolphin, Jellyfin Desktop, VLC, and Finamp.
   - type: files
     files:
       - source: system

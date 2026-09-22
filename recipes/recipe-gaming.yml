@@ -8,7 +8,7 @@ image-version: latest
 
 modules:
   # system config (as recipe.yml) plus the gaming overlay: proton-cachyos-install
-  # command at /usr/bin, and the taskbar launcher pins.
+  # command at /usr/bin, animations off (etc/xdg/kdeglobals), and the taskbar launcher pins.
   - type: files
     files:
       - source: system
@@ -170,6 +170,7 @@ modules:
     snippets:
       - |
         RUN test -f /usr/share/applications/steam.desktop \
+            && test -f /usr/share/applications/org.kde.dolphin.desktop \
             && test -f /usr/share/applications/kitty.desktop \
             && test -f /usr/share/applications/brave-origin.desktop
 

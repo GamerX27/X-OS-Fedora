@@ -25,12 +25,13 @@ panel.addWidget("org.kde.plasma.kickoff")
 //panel.addWidget("org.kde.plasma.showActivityManager")
 panel.addWidget("org.kde.plasma.pager")
 
-// X-OS-Gaming: pins Steam, Kitty, Brave, and Bazaar (upstream's defaultPanel leaves this empty).
+// X-OS-Gaming: pins Steam, Dolphin, Kitty, Brave, and Bazaar (upstream's defaultPanel leaves this empty).
 // Desktop file IDs are asserted in recipes/recipe-gaming.yml after steam/faugus/heroic install.
 var taskManager = panel.addWidget("org.kde.plasma.icontasks")
 taskManager.currentConfigGroup = ["General"]
 taskManager.writeConfig("launchers", [
     "applications:steam.desktop",
+    "applications:org.kde.dolphin.desktop",
     "applications:kitty.desktop",
     "applications:brave-origin.desktop",
     "applications:io.github.kolunmi.Bazaar.desktop"

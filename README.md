@@ -97,9 +97,10 @@ Everything above, plus:
 - Steam, GameMode, Gamescope, MangoHud, GOverlay
 - Faugus Launcher, Heroic Games Launcher
 - RPM Fusion codecs and freeworld Mesa VA-API/Vulkan drivers
+- Desktop animations off (animation speed set to Instant)
 - `proton-cachyos-install` — run it yourself to install or update
   [Proton-CachyOS](https://github.com/CachyOS/proton-cachyos) into Steam
-- Steam, Kitty, Brave, and Bazaar pinned to the taskbar (new accounts only)
+- Steam, Dolphin, Kitty, Brave, and Bazaar pinned to the taskbar (new accounts only)
 
 ## Media PC variant
 
@@ -108,7 +109,7 @@ Everything in the base image, plus:
 - LTS kernel (see above)
 - Jellyfin Desktop and Finamp (Flatpak) for media playback
 - LocalSend (Flatpak) for quick file transfers
-- Jellyfin Desktop, VLC, Finamp, and Bazaar pinned to the taskbar (new accounts only)
+- Dolphin, Jellyfin Desktop, VLC, Finamp, and Bazaar pinned to the taskbar (new accounts only)
 
 ## Build
 
