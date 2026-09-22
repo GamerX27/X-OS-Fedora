@@ -88,4 +88,4 @@ jobs:
             exit 0
           fi
           pip install --quiet internetarchive
-          ia delete x-os-fedora --glob 'history/files/*' --verbose
+          ia delete x-os-fedora --glob 'history/files/*'
