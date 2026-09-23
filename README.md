@@ -136,7 +136,7 @@ To load one on every boot, set `default_sched` in
 Everything above, plus:
 
 - Steam, GameMode, Gamescope, MangoHud, GOverlay
-- Faugus Launcher, Heroic Games Launcher
+- Faugus Launcher, Heroic Games Launcher (latest GitHub release, updated with each weekly build)
 - RPM Fusion codecs and freeworld Mesa VA-API/Vulkan drivers
 - Desktop animations off (animation speed set to Instant)
 - `proton-cachyos-install` — run it yourself to install or update

@@ -151,14 +151,39 @@ modules:
               https://mirrors.rpmfusion.org/nonfree/fedora/rpmfusion-nonfree-release-$(rpm -E %fedora).noarch.rpm \
             && if rpm -q libfdk-aac >/dev/null 2>&1; then dnf5 -y swap libfdk-aac fdk-aac-free; fi \
             && dnf5 -y install --skip-unavailable --exclude=libfdk-aac fdk-aac-free.i686 \
-            && dnf5 -y copr enable atim/heroic-games-launcher \
             && dnf5 -y copr enable faugus/faugus-launcher \
             && dnf5 -y install --skip-unavailable --exclude=libfdk-aac \
                  steam steam-devices gamemode gamescope mangohud goverlay \
-                 faugus-launcher heroic-games-launcher-bin \
+                 faugus-launcher \
                  mesa-vulkan-drivers mesa-vulkan-drivers.i686 vulkan-loader vulkan-tools amd-gpu-firmware \
-            && dnf5 -y copr disable atim/heroic-games-launcher \
             && dnf5 -y copr disable faugus/faugus-launcher
+
+  # Heroic from its GitHub releases (the atim COPR stopped updating), checked against the sha512
+  # in latest-linux.yml. The RPM installs to /opt, which is /var/opt on bootc and never updated
+  # after first install, so it's moved to /usr/lib/heroic.
+  - type: containerfile
+    snippets:
+      - |
+        RUN set -eu \
+            && BASE=https://github.com/Heroic-Games-Launcher/HeroicGamesLauncher/releases/latest/download \
+            && curl -fsSL -o /tmp/heroic.yml "$BASE/latest-linux.yml" \
+            && VER="$(sed -n 's/^version: //p' /tmp/heroic.yml)" \
+            && RPM="Heroic-${VER}-linux-x86_64.rpm" \
+            && SHA="$(grep -A1 "url: ${RPM}" /tmp/heroic.yml | sed -n 's/.*sha512: //p')" \
+            && curl -fsSL -o "/tmp/${RPM}" "$BASE/${RPM}" \
+            && test "$(openssl dgst -sha512 -binary "/tmp/${RPM}" | base64 -w0)" = "$SHA" \
+            && OPT_LINK="$(readlink /opt || true)" \
+            && if [ -n "$OPT_LINK" ]; then rm /opt && mkdir /opt; fi \
+            && dnf5 -y install "/tmp/${RPM}" \
+            && mv /opt/Heroic /usr/lib/heroic \
+            && if [ -n "$OPT_LINK" ]; then rmdir /opt && ln -s "$OPT_LINK" /opt; fi \
+            && { update-alternatives --remove-all heroic 2>/dev/null || true; } \
+            && ln -sf /usr/lib/heroic/heroic /usr/bin/heroic \
+            && sed -i 's|/opt/Heroic|/usr/lib/heroic|g' /usr/share/applications/heroic.desktop \
+            && rm -f /tmp/heroic.yml "/tmp/${RPM}" \
+            && test -x "$(readlink -f /usr/bin/heroic)" \
+            && grep -q '^Exec=/usr/lib/heroic/heroic' /usr/share/applications/heroic.desktop \
+            && echo "Heroic ${VER}"
 
   # libheif-ffmpeg (already installed via Fedora's updates repo) pins libheif to a version
   # newer than RPM Fusion's libheif-freeworld supports, blocking the @multimedia group's
