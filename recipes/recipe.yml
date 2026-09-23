@@ -187,6 +187,7 @@ modules:
             }
       - |
         RUN plymouth-set-default-theme -R bgrt
+      # VARIANT stays Kinoite: topgrade uses it to pick rpm-ostree over dnf.
       # Set directly here, not via BlueBuild's os-release module: a value substituted into
       # the recipe by an earlier workflow step doesn't survive blue-build's own checkout
       # right before the build starts.
@@ -194,9 +195,10 @@ modules:
         RUN set -eu \
             && BUILD_DATE="$(date -u +%Y-%m-%d)" \
             && . /etc/os-release \
-            && sed -i --follow-symlinks -e '/^NAME=/d' -e '/^PRETTY_NAME=/d' -e '/^VARIANT=/d' -e '/^VARIANT_ID=/d' -e '/^BUILD_ID=/d' /etc/os-release \
-            && printf 'NAME="X27-Linux"\nPRETTY_NAME="X27-Linux %s (%s)"\nVARIANT="Desktop"\nVARIANT_ID=x27-linux\nBUILD_ID="%s-%s"\n' \
-                 "${VERSION_ID}" "${BUILD_DATE}" "${VERSION_ID}" "${BUILD_DATE}" >> /etc/os-release
+            && sed -i --follow-symlinks -e '/^NAME=/d' -e '/^PRETTY_NAME=/d' -e '/^BUILD_ID=/d' /etc/os-release \
+            && printf 'NAME="X27-Linux"\nPRETTY_NAME="X27-Linux %s (%s)"\nBUILD_ID="%s-%s"\n' \
+                 "${VERSION_ID}" "${BUILD_DATE}" "${VERSION_ID}" "${BUILD_DATE}" >> /etc/os-release \
+            && grep -qx 'VARIANT="Kinoite"' /etc/os-release
 
   # Last step: all dnf5 calls above are done. See files/system/usr/libexec/x27-dnf-guard.
   - type: containerfile
