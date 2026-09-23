@@ -51,7 +51,7 @@ case "$TARGET" in
 esac
 
 ISO_NAME="${IMAGE}.iso"
-IMAGE_REF="${REGISTRY}/${IMAGE}:44"
+IMAGE_REF="${REGISTRY}/${IMAGE}:latest"
 
 if ! command -v bluebuild >/dev/null 2>&1; then
   echo "bluebuild CLI not found on PATH."

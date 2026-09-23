@@ -35,7 +35,7 @@ jobs:
       - name: Generate ISO
         if: ${{ !inputs.cleanup_only }}
         run: |
-          sudo bluebuild generate-iso --iso-name x27-linux.iso image ghcr.io/gamerx27/x27-linux:44
+          sudo bluebuild generate-iso --iso-name x27-linux.iso image ghcr.io/gamerx27/x27-linux:latest
 
       - name: Generate checksum
         if: ${{ !inputs.cleanup_only }}
