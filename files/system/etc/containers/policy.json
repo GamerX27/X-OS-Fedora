@@ -6,28 +6,37 @@
   ],
   "transports": {
     "docker": {
-      "ghcr.io/gamerx27/x-os-fedora": [
+      "ghcr.io/gamerx27/x27-linux": [
         {
           "type": "sigstoreSigned",
-          "keyPath": "/etc/pki/containers/x-os-fedora.pub",
+          "keyPath": "/etc/pki/containers/x27-linux.pub",
           "signedIdentity": {
             "type": "matchRepository"
           }
         }
       ],
-      "ghcr.io/gamerx27/x-os-fedora-lts": [
+      "ghcr.io/gamerx27/x27-linux-lts": [
         {
           "type": "sigstoreSigned",
-          "keyPath": "/etc/pki/containers/x-os-fedora.pub",
+          "keyPath": "/etc/pki/containers/x27-linux.pub",
           "signedIdentity": {
             "type": "matchRepository"
           }
         }
       ],
-      "ghcr.io/gamerx27/x-os-media-pc": [
+      "ghcr.io/gamerx27/x27-linux-gaming": [
         {
           "type": "sigstoreSigned",
-          "keyPath": "/etc/pki/containers/x-os-fedora.pub",
+          "keyPath": "/etc/pki/containers/x27-linux.pub",
+          "signedIdentity": {
+            "type": "matchRepository"
+          }
+        }
+      ],
+      "ghcr.io/gamerx27/x27-linux-media-pc": [
+        {
+          "type": "sigstoreSigned",
+          "keyPath": "/etc/pki/containers/x27-linux.pub",
           "signedIdentity": {
             "type": "matchRepository"
           }

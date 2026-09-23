@@ -1,10 +1,10 @@
 ---
 # yaml-language-server: $schema=https://schema.blue-build.org/recipe-v1.json
 
-name: x-os-gaming
-description: X-OS-Fedora (Gaming) - X-OS-Fedora plus Steam, Faugus, Heroic, RPM Fusion codecs, and RPM Fusion's freeworld Mesa VA-API/Vulkan drivers
+name: x27-linux-gaming
+description: X27-Linux (Gaming) - X27-Linux plus Steam, Faugus, Heroic, RPM Fusion codecs, and RPM Fusion's freeworld Mesa VA-API/Vulkan drivers
 base-image: ghcr.io/blue-build/base-images/fedora-kinoite
-image-version: latest
+image-version: 44
 
 modules:
   # system config (as recipe.yml) plus the gaming overlay: proton-cachyos-install
@@ -66,13 +66,13 @@ modules:
         - topgrade
 
   # Masks the base image's background auto-update timer; topgrade-reminder.timer
-  # (files/systemd/user/) nudges weekly instead. x-os-install-date.service
-  # (files/systemd/system/) stamps /var/lib/x-os/install-date on first boot only,
+  # (files/systemd/user/) nudges weekly instead. x27-install-date.service
+  # (files/systemd/system/) stamps /var/lib/x27-linux/install-date on first boot only,
   # for fastfetch's OS Age - /var persists across updates, unlike /etc or /usr.
   - type: systemd
     system:
       enabled:
-        - x-os-install-date.service
+        - x27-install-date.service
       masked:
         - bootc-fetch-apply-updates.timer
     user:
@@ -113,6 +113,25 @@ modules:
             && depmod -a "${KVER}" \
             && test -f "/usr/lib/modules/${KVER}/modules.dep" \
             && echo "Kernel now: ${KVER}"
+
+  # CachyOS userspace tuning from bieszczaders/kernel-cachyos-addons: cachyos-settings (sysctl,
+  # zram, udev, ntsync) and the sched-ext schedulers. cachyos-settings Conflicts with
+  # zram-generator-defaults, hence the swap. Before initramfs: it adds modprobe.d/udev rules.
+  # Gaming also gets ananicy-cpp and scx-manager, with scx_loader (scx_lavd, files/gaming/etc/scx_loader)
+  # and ananicy-cpp enabled here, since the systemd module above runs before they're installed.
+  # power-profiles-daemon replaces tuned-ppd for powerprofilesctl, which game-performance needs.
+  - type: containerfile
+    snippets:
+      - |
+        RUN dnf5 -y copr enable bieszczaders/kernel-cachyos-addons \
+            && dnf5 -y swap zram-generator-defaults cachyos-settings \
+            && dnf5 -y install scx-scheds scx-tools \
+                 ananicy-cpp cachyos-ananicy-rules scx-manager \
+            && dnf5 -y copr disable bieszczaders/kernel-cachyos-addons \
+            && dnf5 -y swap tuned-ppd power-profiles-daemon \
+            && rpm -q cachyos-settings scx-scheds scx-tools ananicy-cpp cachyos-ananicy-rules scx-manager \
+            && command -v powerprofilesctl \
+            && systemctl enable scx_loader.service ananicy-cpp.service power-profiles-daemon.service
 
   # Regenerates initramfs to pick up the kernel swap above. Must run after it.
   - type: initramfs
@@ -228,8 +247,20 @@ modules:
       # the recipe by an earlier workflow step doesn't survive blue-build's own checkout
       # right before the build starts.
       - |
-        RUN BUILD_DATE="$(date -u +%Y-%m-%d)" \
-            && sed -i "s|^PRETTY_NAME=.*|PRETTY_NAME=\"Fedora Kinoite (x-os-gaming, build ${BUILD_DATE})\"|" /etc/os-release \
-            && printf '\nBUILD_ID="%s"\n' "${BUILD_DATE}" >> /etc/os-release
+        RUN set -eu \
+            && BUILD_DATE="$(date -u +%Y-%m-%d)" \
+            && . /etc/os-release \
+            && sed -i --follow-symlinks -e '/^NAME=/d' -e '/^PRETTY_NAME=/d' -e '/^VARIANT=/d' -e '/^VARIANT_ID=/d' -e '/^BUILD_ID=/d' /etc/os-release \
+            && printf 'NAME="X27-Linux"\nPRETTY_NAME="X27-Linux %s Gaming (%s)"\nVARIANT="Gaming"\nVARIANT_ID=x27-linux-gaming\nBUILD_ID="%s-%s"\n' \
+                 "${VERSION_ID}" "${BUILD_DATE}" "${VERSION_ID}" "${BUILD_DATE}" >> /etc/os-release
+
+  # Last step: all dnf5 calls above are done. See files/system/usr/libexec/x27-dnf-guard.
+  - type: containerfile
+    snippets:
+      - |
+        RUN mv /usr/bin/dnf5 /usr/libexec/dnf5-real \
+            && ln -s /usr/libexec/x27-dnf-guard /usr/bin/dnf5 \
+            && test "$(readlink -f /usr/bin/dnf)" = /usr/libexec/x27-dnf-guard \
+            && dnf5 --version
 
   - type: signing

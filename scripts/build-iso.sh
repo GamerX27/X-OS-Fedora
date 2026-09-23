@@ -7,11 +7,11 @@ OUT_DIR="${REPO_ROOT}/iso-out"
 MIN_FREE_GB=20
 
 usage() {
-  echo "Usage: $0 [-y|--yes] [fedora|lts|gaming|media-pc]"
-  echo "  fedora    x-os-fedora (default)"
-  echo "  lts       x-os-fedora-lts"
-  echo "  gaming    x-os-gaming"
-  echo "  media-pc  x-os-media-pc"
+  echo "Usage: $0 [-y|--yes] [base|lts|gaming|media-pc]"
+  echo "  base      x27-linux (default)"
+  echo "  lts       x27-linux-lts"
+  echo "  gaming    x27-linux-gaming"
+  echo "  media-pc  x27-linux-media-pc"
   echo "  -y, --yes  don't ask before installing the BlueBuild CLI"
 }
 
@@ -36,13 +36,13 @@ for arg in "$@"; do
       ;;
   esac
 done
-TARGET="${TARGET:-fedora}"
+TARGET="${TARGET:-base}"
 
 case "$TARGET" in
-  fedora)   IMAGE="x-os-fedora" ;;
-  lts)      IMAGE="x-os-fedora-lts" ;;
-  gaming)   IMAGE="x-os-gaming" ;;
-  media-pc) IMAGE="x-os-media-pc" ;;
+  base)     IMAGE="x27-linux" ;;
+  lts)      IMAGE="x27-linux-lts" ;;
+  gaming)   IMAGE="x27-linux-gaming" ;;
+  media-pc) IMAGE="x27-linux-media-pc" ;;
   *)
     echo "Unknown target: $TARGET" >&2
     usage >&2
@@ -51,7 +51,7 @@ case "$TARGET" in
 esac
 
 ISO_NAME="${IMAGE}.iso"
-IMAGE_REF="${REGISTRY}/${IMAGE}:latest"
+IMAGE_REF="${REGISTRY}/${IMAGE}:44"
 
 if ! command -v bluebuild >/dev/null 2>&1; then
   echo "bluebuild CLI not found on PATH."

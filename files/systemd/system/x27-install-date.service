@@ -1,0 +1,11 @@
+[Unit]
+Description=Record the first-boot install date
+ConditionPathExists=!/var/lib/x27-linux/install-date
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+ExecStart=/bin/sh -c 'mkdir -p /var/lib/x27-linux && date -u +%%Y-%%m-%%d > /var/lib/x27-linux/install-date'
+
+[Install]
+WantedBy=multi-user.target

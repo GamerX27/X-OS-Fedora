@@ -122,7 +122,7 @@
             "type": "command",
             "key": "  ›  OS Age  ",
             "keyColor": "magenta",
-            "text": "if [ -f /var/lib/x-os/install-date ]; then birth=$(date -d \"$(cat /var/lib/x-os/install-date)\" +%s 2>/dev/null); fi; if [ -n \"$birth\" ]; then echo \"$(( ($(date +%s) - birth) / 86400 )) days\"; else echo unknown; fi"
+            "text": "if [ -f /var/lib/x27-linux/install-date ]; then birth=$(date -d \"$(cat /var/lib/x27-linux/install-date)\" +%s 2>/dev/null); fi; if [ -n \"$birth\" ]; then echo \"$(( ($(date +%s) - birth) / 86400 )) days\"; else echo unknown; fi"
         },
         {
             "type": "uptime",

@@ -1,11 +1,11 @@
-# X-OS-Fedora
+# X27-Linux
 
-Custom Fedora Kinoite, built with [BlueBuild](https://blue-build.org/).
+Custom Fedora Kinoite 44, built with [BlueBuild](https://blue-build.org/).
 
-- Base: `ghcr.io/gamerx27/x-os-fedora` — [recipe.yml](recipes/recipe.yml)
-- LTS kernel: `ghcr.io/gamerx27/x-os-fedora-lts` — [recipe-lts.yml](recipes/recipe-lts.yml)
-- Gaming: `ghcr.io/gamerx27/x-os-gaming` — [recipe-gaming.yml](recipes/recipe-gaming.yml)
-- Media PC: `ghcr.io/gamerx27/x-os-media-pc` — [recipe-media-pc.yml](recipes/recipe-media-pc.yml)
+- Base: `ghcr.io/gamerx27/x27-linux` — [recipe.yml](recipes/recipe.yml)
+- LTS kernel: `ghcr.io/gamerx27/x27-linux-lts` — [recipe-lts.yml](recipes/recipe-lts.yml)
+- Gaming: `ghcr.io/gamerx27/x27-linux-gaming` — [recipe-gaming.yml](recipes/recipe-gaming.yml)
+- Media PC: `ghcr.io/gamerx27/x27-linux-media-pc` — [recipe-media-pc.yml](recipes/recipe-media-pc.yml)
 
 ## What's in it
 
@@ -17,31 +17,50 @@ Custom Fedora Kinoite, built with [BlueBuild](https://blue-build.org/).
 - Brave, Dolphin, Kitty, and Bazaar pinned to the taskbar (new accounts only)
 - Hot corners and the shake-to-locate-cursor effect disabled (new accounts only)
 - CachyOS kernel (BORE scheduler); LTS variant published separately
+- CachyOS tuning: sysctl, zram, I/O schedulers, `ntsync`, sched-ext schedulers (see [CachyOS tuning](#cachyos-tuning))
+- `dnf` disabled on the installed system (see [Installing software](#installing-software))
 - Auto-updates off — update manually with `topgrade`
-- `/etc/os-release` stamped with the build date
+- `/etc/os-release` names the image and build, e.g. `X27-Linux 44 Gaming (2026-09-22)`
 
 ## Install
 
 **Fresh machine:**
-you can get the ISO file on [archive.org](https://archive.org/details/x-os-fedora)
+you can get the ISO file on [archive.org](https://archive.org/details/x27-linux)
 
 **Already on Fedora Kinoite:** rebase onto this image.
 
 ```
-sudo rpm-ostree rebase ostree-unverified-registry:ghcr.io/gamerx27/x-os-fedora:latest
+sudo rpm-ostree rebase ostree-unverified-registry:ghcr.io/gamerx27/x27-linux:44
 systemctl reboot
 ```
 
 Then switch to verified pulls:
 
 ```
-sudo rpm-ostree rebase ostree-image-signed:docker://ghcr.io/gamerx27/x-os-fedora:latest
+sudo rpm-ostree rebase ostree-image-signed:docker://ghcr.io/gamerx27/x27-linux:44
 systemctl reboot
 ```
 
-Swap `x-os-fedora` for `x-os-fedora-lts` (LTS kernel), `x-os-gaming`
-(Steam/gaming, see below), or `x-os-media-pc` (media center, see below) in
+Swap `x27-linux` for `x27-linux-lts` (LTS kernel), `x27-linux-gaming`
+(Steam/gaming, see below), or `x27-linux-media-pc` (media center, see below) in
 the commands above.
+
+### Image tags
+
+- `:44` — follows Fedora 44, rebuilt weekly. Use this one.
+- `:<date>-44` (e.g. `:20260922-44`) — one fixed build, for rolling back.
+- `:latest` — the newest build, whatever Fedora version that is.
+
+## Installing software
+
+`dnf` is disabled on the installed system: the image is read-only and replaced
+on every update, so anything installed with it wouldn't stick.
+
+- Apps: Bazaar (Flatpak)
+- CLI and dev tools: `distrobox create && distrobox enter`, then use `dnf`
+  inside the container
+- System packages: `sudo rpm-ostree install <package>`, then reboot
+- Updates: `topgrade`
 
 ## Update
 
@@ -79,9 +98,9 @@ sudo flatpak remote-modify --disable fedora fedora-testing
 
 ## Kernel
 
-`x-os-fedora` and `x-os-gaming` ship the
+`x27-linux` and `x27-linux-gaming` ship the
 [CachyOS kernel](https://copr.fedorainfracloud.org/coprs/bieszczaders/kernel-cachyos/)
-(BORE scheduler); `x-os-fedora-lts` and `x-os-media-pc` ship its LTS variant
+(BORE scheduler); `x27-linux-lts` and `x27-linux-media-pc` ship its LTS variant
 instead. All replace the stock Fedora kernel.
 
 - **Needs an x86_64-v3 CPU** (Zen-family AMD, Haswell+ Intel). Older CPUs
@@ -89,6 +108,28 @@ instead. All replace the stock Fedora kernel.
   `/lib64/ld-linux-x86-64.so.2 --help | grep "(supported, searched)"`
 - **Unsigned.** Turn off Secure Boot, or sign it yourself with
   `sbsigntools`/`mokutil` (both included).
+
+## CachyOS tuning
+
+All images include packages from the
+[kernel-cachyos-addons](https://copr.fedorainfracloud.org/coprs/bieszczaders/kernel-cachyos-addons/)
+COPR:
+
+- `cachyos-settings`: CachyOS sysctl, zram (zstd, sized to RAM), udev I/O
+  scheduler rules, `ntsync`, and the `game-performance`, `zink-run`, and
+  `kerver` commands
+- `scx-scheds` and `scx-tools`: sched-ext schedulers, `scxctl`, `scxtui`
+
+On all images except gaming, no sched-ext scheduler runs by default; BORE from
+the kernel handles scheduling. To try one:
+
+```
+sudo systemctl start scx_loader
+scxctl start -s scx_bpfland
+```
+
+To load one on every boot, set `default_sched` in
+`/etc/scx_loader/config.toml` and run `sudo systemctl enable --now scx_loader`.
 
 ## Gaming variant
 
@@ -101,6 +142,14 @@ Everything above, plus:
 - `proton-cachyos-install` — run it yourself to install or update
   [Proton-CachyOS](https://github.com/CachyOS/proton-cachyos) into Steam
 - Steam, Dolphin, Kitty, Brave, and Bazaar pinned to the taskbar (new accounts only)
+- `scx_lavd` sched-ext scheduler in Gaming mode, running by default. Switch
+  with scx-manager or `scxctl switch -s <scheduler>`; turn it off with
+  `sudo systemctl disable --now scx_loader`
+- ananicy-cpp with CachyOS rules. If games stutter, try turning this off
+  first: `sudo systemctl disable --now ananicy-cpp`
+- power-profiles-daemon instead of tuned-ppd, so `game-performance` works.
+  In Steam, set a game's launch options to `game-performance %command%` to
+  use the performance power profile while it runs
 
 ## Media PC variant
 
@@ -130,10 +179,10 @@ connection to GHCR.
 - x86_64-v3 CPU to boot the resulting image (see [Kernel](#kernel) above)
 
 ```
-./scripts/build-iso.sh [fedora|lts|gaming|media-pc]
+./scripts/build-iso.sh [base|lts|gaming|media-pc]
 ```
 
-Defaults to `fedora` if no argument is given. Installs the BlueBuild CLI on
+Defaults to `base` if no argument is given. Installs the BlueBuild CLI on
 first run if it's missing (asks for confirmation before running the
 installer; pass `-y` to skip the prompt). Output goes to `iso-out/` at the
 repo root: `<name>.iso` and `<name>.iso.sha256sum`.

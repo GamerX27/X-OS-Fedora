@@ -1,10 +1,10 @@
 ---
 # yaml-language-server: $schema=https://schema.blue-build.org/recipe-v1.json
 
-name: x-os-fedora-lts
-description: X-OS-Fedora (LTS kernel) - custom Fedora Kinoite with X27 config, KDE tweaks, Brave Origin, and the CachyOS LTS kernel
+name: x27-linux-lts
+description: X27-Linux (LTS kernel) - custom Fedora Kinoite with X27 config, KDE tweaks, Brave Origin, and the CachyOS LTS kernel
 base-image: ghcr.io/blue-build/base-images/fedora-kinoite
-image-version: latest
+image-version: 44
 
 modules:
   # system config, plus the base taskbar overlay: Brave/Dolphin/Kitty pins.
@@ -65,13 +65,13 @@ modules:
         - topgrade
 
   # Masks the base image's background auto-update timer; topgrade-reminder.timer
-  # (files/systemd/user/) nudges weekly instead. x-os-install-date.service
-  # (files/systemd/system/) stamps /var/lib/x-os/install-date on first boot only,
+  # (files/systemd/user/) nudges weekly instead. x27-install-date.service
+  # (files/systemd/system/) stamps /var/lib/x27-linux/install-date on first boot only,
   # for fastfetch's OS Age - /var persists across updates, unlike /etc or /usr.
   - type: systemd
     system:
       enabled:
-        - x-os-install-date.service
+        - x27-install-date.service
       masked:
         - bootc-fetch-apply-updates.timer
     user:
@@ -115,6 +115,19 @@ modules:
             && depmod -a "${KVER}" \
             && test -f "/usr/lib/modules/${KVER}/modules.dep" \
             && echo "Kernel now: ${KVER}"
+
+  # CachyOS userspace tuning from bieszczaders/kernel-cachyos-addons: cachyos-settings (sysctl,
+  # zram, udev, ntsync) and the sched-ext schedulers. cachyos-settings Conflicts with
+  # zram-generator-defaults, hence the swap. Before initramfs: it adds modprobe.d/udev rules.
+  # scx_loader stays disabled here; BORE from the kernel stays in charge.
+  - type: containerfile
+    snippets:
+      - |
+        RUN dnf5 -y copr enable bieszczaders/kernel-cachyos-addons \
+            && dnf5 -y swap zram-generator-defaults cachyos-settings \
+            && dnf5 -y install scx-scheds scx-tools \
+            && dnf5 -y copr disable bieszczaders/kernel-cachyos-addons \
+            && rpm -q cachyos-settings scx-scheds scx-tools
 
   # Regenerates initramfs to pick up the kernel swap above. Must run after it.
   - type: initramfs
@@ -181,8 +194,20 @@ modules:
       # the recipe by an earlier workflow step doesn't survive blue-build's own checkout
       # right before the build starts.
       - |
-        RUN BUILD_DATE="$(date -u +%Y-%m-%d)" \
-            && sed -i "s|^PRETTY_NAME=.*|PRETTY_NAME=\"Fedora Kinoite (x-os-fedora-lts, build ${BUILD_DATE})\"|" /etc/os-release \
-            && printf '\nBUILD_ID="%s"\n' "${BUILD_DATE}" >> /etc/os-release
+        RUN set -eu \
+            && BUILD_DATE="$(date -u +%Y-%m-%d)" \
+            && . /etc/os-release \
+            && sed -i --follow-symlinks -e '/^NAME=/d' -e '/^PRETTY_NAME=/d' -e '/^VARIANT=/d' -e '/^VARIANT_ID=/d' -e '/^BUILD_ID=/d' /etc/os-release \
+            && printf 'NAME="X27-Linux"\nPRETTY_NAME="X27-Linux %s LTS (%s)"\nVARIANT="LTS"\nVARIANT_ID=x27-linux-lts\nBUILD_ID="%s-%s"\n' \
+                 "${VERSION_ID}" "${BUILD_DATE}" "${VERSION_ID}" "${BUILD_DATE}" >> /etc/os-release
+
+  # Last step: all dnf5 calls above are done. See files/system/usr/libexec/x27-dnf-guard.
+  - type: containerfile
+    snippets:
+      - |
+        RUN mv /usr/bin/dnf5 /usr/libexec/dnf5-real \
+            && ln -s /usr/libexec/x27-dnf-guard /usr/bin/dnf5 \
+            && test "$(readlink -f /usr/bin/dnf)" = /usr/libexec/x27-dnf-guard \
+            && dnf5 --version
 
   - type: signing
