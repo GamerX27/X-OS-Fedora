@@ -47,18 +47,9 @@ modules:
         - plasma-discover-notifier
         - NetworkManager-config-connectivity-fedora
 
-  # Bazaar replaces Discover (removed above). VLC and Bazaar are installed into /var/lib/flatpak
-  # at build time; bootc copies the image's /var on first install, so ISO installs have them
-  # offline at first boot. default-flatpaks covers rebased systems, whose /var is kept as-is.
-  - type: containerfile
-    snippets:
-      - |
-        RUN set -eu \
-            && flatpak remote-add --system --if-not-exists flathub https://dl.flathub.org/repo/flathub.flatpakrepo \
-            && flatpak install --system --noninteractive flathub org.videolan.VLC io.github.kolunmi.Bazaar \
-            && test -d /var/lib/flatpak/app/org.videolan.VLC \
-            && test -d /var/lib/flatpak/app/io.github.kolunmi.Bazaar
-
+  # Bazaar replaces Discover (removed above). The ISO embeds VLC and Bazaar (flatpak_refs/) and
+  # installs them offline; BlueBuild empties /var, so they can't ship in the image itself.
+  # This installs them on first boot for systems that rebased instead.
   - type: default-flatpaks@v1
     notify: true
     system:
@@ -74,6 +65,17 @@ modules:
     install:
       packages:
         - topgrade
+
+  # Bazaar search results in KRunner. Only this package comes from ublue-os/packages;
+  # the copr is disabled again afterwards.
+  - type: dnf
+    repos:
+      copr:
+        - ublue-os/packages
+      cleanup: true
+    install:
+      packages:
+        - krunner-bazaar
 
   # Masks the base image's background auto-update timer; topgrade-reminder.timer
   # (files/systemd/user/) nudges weekly instead. bazaar.service keeps Bazaar running in the

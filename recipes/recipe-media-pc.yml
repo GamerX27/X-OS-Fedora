@@ -16,8 +16,8 @@ modules:
       - source: media-pc
         destination: /
 
-  # VLC and Bazaar are already in the base image's /var/lib/flatpak; they're listed again
-  # so rebased systems still get them if this list replaces the base's.
+  # VLC and Bazaar come from the ISO (flatpak_refs/); they're listed again so rebased
+  # systems still get them if this list replaces the base's.
   - type: default-flatpaks@v1
     notify: true
     system:
