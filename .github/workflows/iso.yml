@@ -28,14 +28,22 @@ jobs:
         if: ${{ !inputs.cleanup_only }}
         uses: ublue-os/remove-unwanted-software@v9
 
-      - name: Install BlueBuild CLI
-        if: ${{ !inputs.cleanup_only }}
-        run: bash <(curl -s https://raw.githubusercontent.com/blue-build/cli/main/install.sh)
-
+      # Not `bluebuild generate-iso`: BlueBuild CLI (v0.9.37) pins build-container-installer v1.4.0,
+      # whose lorax templates strip /usr/sbin/load_policy. Anaconda 44.30 runs it on exit, crashes,
+      # and hangs at the end-of-install Reboot button. v1.5.0 keeps it. Same inputs BlueBuild passed.
       - name: Generate ISO
         if: ${{ !inputs.cleanup_only }}
-        run: |
-          sudo bluebuild generate-iso --iso-name x27-linux.iso image ghcr.io/gamerx27/x27-linux:latest
+        uses: JasonN3/build-container-installer@v1.5.0
+        with:
+          image_repo: ghcr.io/gamerx27
+          image_name: x27-linux
+          image_tag: latest
+          version: "44"
+          variant: kinoite
+          iso_name: x27-linux.iso
+          secure_boot_key_url: https://github.com/ublue-os/bazzite/raw/main/secure_boot.der
+          enrollment_password: universalblue
+          web_ui: "false"
 
       - name: Generate checksum
         if: ${{ !inputs.cleanup_only }}

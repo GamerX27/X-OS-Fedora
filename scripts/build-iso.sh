@@ -5,26 +5,22 @@ REGISTRY="ghcr.io/gamerx27"
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 OUT_DIR="${REPO_ROOT}/iso-out"
 MIN_FREE_GB=20
+INSTALLER_IMAGE="ghcr.io/jasonn3/build-container-installer:v1.5.0"
 
 usage() {
-  echo "Usage: $0 [-y|--yes] [base|lts|gaming|media-pc]"
+  echo "Usage: $0 [base|lts|gaming|media-pc]"
   echo "  base      x27-linux (default)"
   echo "  lts       x27-linux-lts"
   echo "  gaming    x27-linux-gaming"
   echo "  media-pc  x27-linux-media-pc"
-  echo "  -y, --yes  don't ask before installing the BlueBuild CLI"
 }
 
-ASSUME_YES=0
 TARGET=""
 for arg in "$@"; do
   case "$arg" in
     -h|--help)
       usage
       exit 0
-      ;;
-    -y|--yes)
-      ASSUME_YES=1
       ;;
     *)
       if [ -n "$TARGET" ]; then
@@ -53,26 +49,9 @@ esac
 ISO_NAME="${IMAGE}.iso"
 IMAGE_REF="${REGISTRY}/${IMAGE}:latest"
 
-if ! command -v bluebuild >/dev/null 2>&1; then
-  echo "bluebuild CLI not found on PATH."
-  echo "Install command (downloads and runs a script from GitHub as your user):"
-  echo "  bash <(curl -s https://raw.githubusercontent.com/blue-build/cli/main/install.sh)"
-  if [ "$ASSUME_YES" -ne 1 ]; then
-    read -r -p "Run this now? [y/N] " REPLY
-  else
-    REPLY="y"
-  fi
-  case "$REPLY" in
-    [yY]|[yY][eE][sS])
-      bash <(curl -s https://raw.githubusercontent.com/blue-build/cli/main/install.sh)
-      ;;
-    *)
-      echo "Aborting. Install bluebuild manually, then re-run this script." >&2
-      exit 1
-      ;;
-  esac
-  command -v bluebuild >/dev/null 2>&1 \
-    || { echo "bluebuild still not on PATH. Check your PATH and re-run." >&2; exit 1; }
+if ! command -v docker >/dev/null 2>&1; then
+  echo "docker not found on PATH." >&2
+  exit 1
 fi
 
 mkdir -p "$OUT_DIR"
@@ -82,10 +61,26 @@ if [ "$AVAIL_GB" -lt "$MIN_FREE_GB" ]; then
   echo "WARNING: only ${AVAIL_GB}GB free at ${OUT_DIR}, ${MIN_FREE_GB}GB+ recommended."
 fi
 
+# Not `bluebuild generate-iso`: BlueBuild CLI (v0.9.37) pins build-container-installer v1.4.0,
+# whose lorax templates strip /usr/sbin/load_policy. Anaconda 44.30 runs it on exit, crashes,
+# and hangs at the end-of-install Reboot button. v1.5.0 keeps it. Same args BlueBuild passed.
 echo "Building ${ISO_NAME} from ${IMAGE_REF}"
+rm -f "${OUT_DIR}/${ISO_NAME}" "${OUT_DIR}/${ISO_NAME}-CHECKSUM"
+sudo docker run --rm --privileged \
+  -v "${OUT_DIR}:/build-container-installer/build" \
+  -v dnf-cache:/cache/dnf/ \
+  "${INSTALLER_IMAGE}" \
+  VARIANT=kinoite \
+  "ISO_NAME=build/${ISO_NAME}" \
+  DNF_CACHE=/cache/dnf \
+  SECURE_BOOT_KEY_URL=https://github.com/ublue-os/bazzite/raw/main/secure_boot.der \
+  ENROLLMENT_PASSWORD=universalblue \
+  WEB_UI=false \
+  "IMAGE_NAME=${IMAGE}" \
+  "IMAGE_REPO=${REGISTRY}" \
+  IMAGE_TAG=latest \
+  VERSION=44
 cd "$OUT_DIR"
-sudo bluebuild generate-iso --build-driver docker --run-driver docker \
-  --iso-name "$ISO_NAME" image "$IMAGE_REF"
 sudo chown "$(id -un):$(id -gn)" "$ISO_NAME"
 
 echo "Generating checksum"

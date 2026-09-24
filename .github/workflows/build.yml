@@ -8,6 +8,7 @@ on:
       - "files/**"
       - "cosign.pub"
       - ".github/workflows/build.yml"
+      - ".github/workflows/build-image.yml"
     branches:
       - main
   pull_request:
@@ -16,6 +17,7 @@ on:
       - "files/**"
       - "cosign.pub"
       - ".github/workflows/build.yml"
+      - ".github/workflows/build-image.yml"
   workflow_dispatch:
     inputs:
       recipe:
@@ -30,26 +32,56 @@ on:
           - recipe-gaming.yml
           - recipe-media-pc.yml
 
+# Gaming builds FROM x27-linux and Media PC FROM x27-linux-lts, so each waits for its base.
+# A variant still runs if its base was skipped (dispatching only that variant) and then
+# builds on the last published base. PR builds don't push, so PR variants do the same.
 jobs:
-  build:
-    name: Build image
-    strategy:
-      fail-fast: false
-      matrix:
-        recipe: ${{ (github.event_name == 'workflow_dispatch' && github.event.inputs.recipe != 'all') && fromJSON(format('["{0}"]', github.event.inputs.recipe)) || fromJSON('["recipe.yml","recipe-lts.yml","recipe-gaming.yml","recipe-media-pc.yml"]') }}
-    runs-on: ubuntu-24.04
+  main:
+    if: github.event_name != 'workflow_dispatch' || contains(fromJSON('["all","recipe.yml"]'), inputs.recipe)
+    uses: ./.github/workflows/build-image.yml
+    with:
+      recipe: recipe.yml
+    secrets: inherit
     permissions:
       contents: read
       packages: write
       id-token: write
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v5
 
-      - name: Build custom image
-        uses: blue-build/github-action@v1.10
-        with:
-          recipe: ${{ matrix.recipe }}
-          cosign_private_key: ${{ secrets.SIGNING_SECRET }}
-          registry_token: ${{ github.token }}
-          pr_event_number: ${{ github.event.number }}
+  lts:
+    if: github.event_name != 'workflow_dispatch' || contains(fromJSON('["all","recipe-lts.yml"]'), inputs.recipe)
+    uses: ./.github/workflows/build-image.yml
+    with:
+      recipe: recipe-lts.yml
+    secrets: inherit
+    permissions:
+      contents: read
+      packages: write
+      id-token: write
+
+  gaming:
+    needs: main
+    if: >-
+      always() && contains(fromJSON('["success","skipped"]'), needs.main.result)
+      && (github.event_name != 'workflow_dispatch' || contains(fromJSON('["all","recipe-gaming.yml"]'), inputs.recipe))
+    uses: ./.github/workflows/build-image.yml
+    with:
+      recipe: recipe-gaming.yml
+    secrets: inherit
+    permissions:
+      contents: read
+      packages: write
+      id-token: write
+
+  media-pc:
+    needs: lts
+    if: >-
+      always() && contains(fromJSON('["success","skipped"]'), needs.lts.result)
+      && (github.event_name != 'workflow_dispatch' || contains(fromJSON('["all","recipe-media-pc.yml"]'), inputs.recipe))
+    uses: ./.github/workflows/build-image.yml
+    with:
+      recipe: recipe-media-pc.yml
+    secrets: inherit
+    permissions:
+      contents: read
+      packages: write
+      id-token: write

@@ -4,8 +4,10 @@ Custom Fedora Kinoite 44, built with [BlueBuild](https://blue-build.org/).
 
 - Base: `ghcr.io/gamerx27/x27-linux` — [recipe.yml](recipes/recipe.yml)
 - LTS kernel: `ghcr.io/gamerx27/x27-linux-lts` — [recipe-lts.yml](recipes/recipe-lts.yml)
-- Gaming: `ghcr.io/gamerx27/x27-linux-gaming` — [recipe-gaming.yml](recipes/recipe-gaming.yml)
-- Media PC: `ghcr.io/gamerx27/x27-linux-media-pc` — [recipe-media-pc.yml](recipes/recipe-media-pc.yml)
+- Gaming: `ghcr.io/gamerx27/x27-linux-gaming` — [recipe-gaming.yml](recipes/recipe-gaming.yml), built on Base
+- Media PC: `ghcr.io/gamerx27/x27-linux-media-pc` — [recipe-media-pc.yml](recipes/recipe-media-pc.yml), built on LTS kernel
+
+Base and LTS build first; Gaming and Media PC build on top of them once they finish.
 
 ## What's in it
 
@@ -13,7 +15,8 @@ Custom Fedora Kinoite 44, built with [BlueBuild](https://blue-build.org/).
 - Removed: Firefox, KHelpCenter, Discover
 - Dark theme, Papirus icons, Fish shell, Kitty terminal, fastfetch banner
 - fastfetch, htop, nvtop, nano, pciutils, lm_sensors, topgrade
-- VLC and Bazaar (Flatpak), Bazaar replacing Discover
+- VLC and Bazaar (Flatpak) preinstalled in the image, Bazaar replacing Discover.
+  Bazaar runs in the background so it opens on the first click.
 - Brave, Dolphin, Kitty, and Bazaar pinned to the taskbar (new accounts only)
 - Hot corners and the shake-to-locate-cursor effect disabled (new accounts only)
 - CachyOS kernel (BORE scheduler); LTS variant published separately
@@ -182,7 +185,7 @@ connection to GHCR.
 ./scripts/build-iso.sh [base|lts|gaming|media-pc]
 ```
 
-Defaults to `base` if no argument is given. Installs the BlueBuild CLI on
-first run if it's missing (asks for confirmation before running the
-installer; pass `-y` to skip the prompt). Output goes to `iso-out/` at the
-repo root: `<name>.iso` and `<name>.iso.sha256sum`.
+Defaults to `base` if no argument is given. Runs
+[build-container-installer](https://github.com/JasonN3/build-container-installer)
+v1.5.0 in docker. Output goes to `iso-out/` at the repo root: `<name>.iso` and
+`<name>.iso.sha256sum`.
