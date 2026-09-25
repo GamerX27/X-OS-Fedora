@@ -21,7 +21,9 @@ if (panel.formFactor === "horizontal") {
     }
 }
 
-panel.addWidget("org.kde.plasma.kickoff")
+var kickoff = panel.addWidget("org.kde.plasma.kickoff")
+kickoff.currentConfigGroup = ["General"]
+kickoff.writeConfig("icon", "/usr/share/pixmaps/x27-linux.png")
 //panel.addWidget("org.kde.plasma.showActivityManager")
 panel.addWidget("org.kde.plasma.pager")
 
