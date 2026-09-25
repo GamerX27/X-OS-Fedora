@@ -16,9 +16,8 @@ Base and LTS build first; Gaming and Media PC build on top of them once they fin
 - Dark theme, Papirus icons, Fish shell, Kitty terminal, fastfetch banner
 - fastfetch, htop, nvtop, nano, pciutils, lm_sensors, topgrade
 - VLC and Bazaar (Flatpak), Bazaar replacing Discover. The ISO carries them and
-  installs them offline; rebased systems get them on first boot. Bazaar runs in
-  the background so it opens on the first click, and its apps show up in KRunner
-  (`krunner-bazaar`).
+  installs them offline; rebased systems get them on first boot. Its apps show
+  up in KRunner (`krunner-bazaar`).
 - Brave, Dolphin, Kitty, and Bazaar pinned to the taskbar (new accounts only)
 - Hot corners and the shake-to-locate-cursor effect disabled (new accounts only)
 - CachyOS kernel (BORE scheduler); LTS variant published separately
