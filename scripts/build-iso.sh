@@ -68,6 +68,20 @@ FLATPAK_REFS="$(cat "${REPO_ROOT}"/flatpak_refs/* | tr '\n' ' ')"
 FLATPAK_DIR="${OUT_DIR}/flatpak"
 sudo rm -rf "$FLATPAK_DIR"
 mkdir -p "$FLATPAK_DIR"
+
+# Removes the image pulled from GHCR (unless it was already here) and the Flatpak repo on
+# exit, whether the build succeeded or not.
+PULLED=0
+sudo docker image inspect "$IMAGE_REF" >/dev/null 2>&1 || PULLED=1
+cleanup() {
+  sudo rm -rf "$FLATPAK_DIR"
+  if [ "$PULLED" = 1 ]; then
+    echo "Removing ${IMAGE_REF}"
+    sudo docker rmi "$IMAGE_REF" >/dev/null 2>&1 || true
+  fi
+}
+trap cleanup EXIT
+
 echo "Collecting Flatpaks: ${FLATPAK_REFS}"
 sudo docker pull "$IMAGE_REF"
 sudo docker run --rm --privileged --entrypoint bash \
@@ -117,7 +131,6 @@ sudo docker run --rm --privileged \
   FLATPAK_DIR=/build-container-installer/build/flatpak
 cd "$OUT_DIR"
 sudo chown "$(id -un):$(id -gn)" "$ISO_NAME"
-sudo rm -rf "$FLATPAK_DIR"
 
 echo "Generating checksum"
 sha256sum "$ISO_NAME" > "${ISO_NAME}.sha256sum"

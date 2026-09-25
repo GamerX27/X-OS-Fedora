@@ -30,7 +30,10 @@ Base and LTS build first; Gaming and Media PC build on top of them once they fin
 ## Install
 
 **Fresh machine:**
-you can get the ISO file on [archive.org](https://archive.org/details/x27-linux)
+you can get the ISO file on [archive.org](https://archive.org/details/x27-linux).
+For the other images, run the `build-iso` workflow (Actions → build-iso → Run
+workflow), pick the image, and download the ISO from the run's artifacts, or
+[build it locally](#build-iso-locally).
 
 **Already on Fedora Kinoite:** rebase onto this image.
 
@@ -170,6 +173,15 @@ Everything in the base image, plus:
 Pushes to `main` build and publish automatically via GitHub Actions, which
 also rebuilds weekly to pick up upstream Kinoite/Brave/kernel updates.
 
+## Releases
+
+Every image build publishes a [GitHub Release](../../releases) that lists what changed: key
+versions (kernels, Plasma, Mesa, Brave, ...), repo commits, and the packages updated, added
+or removed in each image. The package lists are attached to each release.
+
+- `vYYYY.MM.DD` (e.g. `v2026.09.27`): the weekly rebuild
+- `vYYYY.MM.DD.N` (e.g. `v2026.09.24.1`): minor releases for changes pushed in between
+
 ## Build ISO locally
 
 Generates an installer ISO from the already-published `ghcr.io/gamerx27`
@@ -190,4 +202,5 @@ connection to GHCR.
 Defaults to `base` if no argument is given. Runs
 [build-container-installer](https://github.com/JasonN3/build-container-installer)
 v1.5.0 in docker. Output goes to `iso-out/` at the repo root: `<name>.iso` and
-`<name>.iso.sha256sum`.
+`<name>.iso.sha256sum`. The image pulled from GHCR is removed again when the script
+exits, unless it was already on the system.
