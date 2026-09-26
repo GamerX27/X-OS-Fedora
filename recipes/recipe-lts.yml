@@ -85,6 +85,7 @@ modules:
     system:
       enabled:
         - x27-install-date.service
+        - x27-flathub-metadata.service
       masked:
         - bootc-fetch-apply-updates.timer
     user:
